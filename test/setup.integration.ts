@@ -13,6 +13,9 @@ const required = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "SUPABASE_SECRET_KEY",
+  "DATABASE_URL",
+  // Supabase's root CA (PEM text or a file path): Postgres TLS is always verified.
+  "DATABASE_CA_CERT",
 ] as const;
 
 const missing = required.filter((name) => !process.env[name]);
