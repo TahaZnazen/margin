@@ -4,6 +4,7 @@ node_modules/
 
 # Build output and caches
 .next/
+.next-*/
 .turbo/
 out/
 dist/
@@ -20,6 +21,7 @@ evidence/
 playwright-report/
 test-results/
 blob-report/
+.playwright-mcp/
 
 # Golden PDF corpus: commit READMEs, scripts, the manifest and generated/ only
 /fixtures/pdfs/**
@@ -29,9 +31,6 @@ blob-report/
 !/fixtures/pdfs/*.ts
 !/fixtures/pdfs/manifest.json
 !/fixtures/pdfs/generated/**
-
-# Throwaway route written by apps/web/scripts/check-server-only.mjs
-apps/web/src/app/server-only-probe/
 
 # Local credential scratch file at the repo root (never commit)
 /pass

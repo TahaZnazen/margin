@@ -1,5 +1,6 @@
 // Proves the `server-only` guard: a Client Component that imports the admin client must fail `next build`.
-// Adds a throwaway route, runs a build that must fail for that reason, then removes the route.
+// Adds a throwaway route, builds into a separate distDir (the real .next is untouched), then removes the route.
+// If the script is ever killed mid-run, the leftover route shows up in `git status`; the next run removes it.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -7,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const appDir = fileURLToPath(new URL("..", import.meta.url));
 const probeDir = fileURLToPath(new URL("../src/app/server-only-probe/", import.meta.url));
+const distDir = ".next-server-only-probe";
 const nextBin = createRequire(import.meta.url).resolve("next/dist/bin/next");
 
 const probe = `"use client";
@@ -22,6 +24,12 @@ const expectedError = "'server-only' cannot be imported from a Client Component 
 // Keep Ctrl+C from killing this script before the probe is removed; the child build still stops.
 process.on("SIGINT", () => {});
 
+const cleanUp = () => {
+  rmSync(probeDir, { recursive: true, force: true });
+  rmSync(`${appDir}${distDir}`, { recursive: true, force: true });
+};
+
+cleanUp();
 mkdirSync(probeDir, { recursive: true });
 writeFileSync(`${probeDir}page.tsx`, probe);
 
@@ -30,10 +38,10 @@ try {
   result = spawnSync(process.execPath, [nextBin, "build"], {
     cwd: appDir,
     encoding: "utf8",
-    env: { ...process.env, NO_COLOR: "1" },
+    env: { ...process.env, NEXT_DIST_DIR: distDir, NO_COLOR: "1" },
   });
 } finally {
-  rmSync(probeDir, { recursive: true, force: true });
+  cleanUp();
 }
 
 const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;

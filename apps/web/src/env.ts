@@ -16,7 +16,10 @@ const serverSchema = publicSchema.extend({
 export type PublicEnv = z.infer<typeof publicSchema>;
 export type ServerEnv = z.infer<typeof serverSchema>;
 
-function parse<T extends z.ZodType>(schema: T, values: Record<string, string | undefined>) {
+function parse<T extends z.ZodType>(
+  schema: T,
+  values: Record<string, string | undefined>,
+): z.infer<T> {
   const result = schema.safeParse(values);
   if (!result.success) {
     // Name the variables, never echo their values: a secret may sit in the wrong one.
@@ -28,19 +31,23 @@ function parse<T extends z.ZodType>(schema: T, values: Record<string, string | u
         "Set them in apps/web/.env.local (see apps/web/.env.example).",
     );
   }
-  return result.data as z.infer<T>;
+  return result.data;
+}
+
+// Read by literal name: Next.js inlines only `process.env.NEXT_PUBLIC_*` member accesses.
+function readPublicVars() {
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  };
 }
 
 /**
- * Public config, safe in the browser. Each variable is read by its literal name so
- * Next.js can inline it into the client bundle. Validated on call, not at import,
+ * Public config, safe in the browser. Validated on call, not at import,
  * so `next build` and unit tests work without a .env.local.
  */
 export function publicEnv(): PublicEnv {
-  return parse(publicSchema, {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  });
+  return parse(publicSchema, readPublicVars());
 }
 
 /** Server config, including secrets. */
@@ -49,8 +56,7 @@ export function serverEnv(): ServerEnv {
     throw new Error("serverEnv() must not run in the browser.");
   }
   return parse(serverSchema, {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    ...readPublicVars(),
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
   });
 }

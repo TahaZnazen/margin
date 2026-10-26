@@ -10,6 +10,8 @@ for (const [name, value] of Object.entries(process.env)) {
 }
 
 const nextConfig: NextConfig = {
+  // Overridable so scripts/check-server-only.mjs can build without touching .next.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

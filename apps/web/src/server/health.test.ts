@@ -13,8 +13,20 @@ describe("checkSupabaseHealth", () => {
 
     await expect(checkSupabaseHealth()).resolves.toMatchObject({ ok: true });
     expect(fetchMock).toHaveBeenCalledWith(
-      new URL("https://example.supabase.co/auth/v1/health"),
+      "https://example.supabase.co/auth/v1/health",
       expect.objectContaining({ headers: { apikey: "sb_publishable_test" } }),
+    );
+  });
+
+  it("keeps a path in the project URL (self-hosted or proxied Supabase)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.com/supabase/");
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await checkSupabaseHealth();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.com/supabase/auth/v1/health",
+      expect.anything(),
     );
   });
 
@@ -45,6 +57,7 @@ describe("checkSupabaseHealth", () => {
 
   it("fails without calling the network when env is missing", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", undefined);
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 

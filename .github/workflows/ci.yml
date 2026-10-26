@@ -23,8 +23,15 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
-      - name: Admin client can't be imported from client code
-        run: pnpm --filter @margin/web check:server-only
+
+  server-only:
+    name: Admin client can't be imported from client code
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @margin/web check:server-only
 
   integration:
     name: Integration (margin-dev)

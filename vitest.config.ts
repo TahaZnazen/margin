@@ -27,6 +27,7 @@ export default defineConfig({
           setupFiles: [fromRoot("./test/setup.unit.ts")],
           unstubGlobals: true,
           unstubEnvs: true,
+          restoreMocks: true,
         },
       },
       {
