@@ -1,0 +1,25 @@
+name: Require secrets
+description: Fail with a clear message when any of the named environment variables (mapped from repository secrets) is empty.
+
+inputs:
+  names:
+    description: Space-separated environment variable names that must be set.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Check repository secrets
+      shell: bash
+      env:
+        NAMES: ${{ inputs.names }}
+      run: |
+        missing=""
+        for name in $NAMES; do
+          [ -n "${!name:-}" ] || missing="$missing $name"
+        done
+        if [ -n "$missing" ]; then
+          echo "::error title=Missing repository secrets::Add$missing under Settings > Secrets and variables > Actions, using the margin-dev values from apps/web/.env.local."
+          exit 1
+        fi
+        echo "Required secrets are set: $NAMES"
