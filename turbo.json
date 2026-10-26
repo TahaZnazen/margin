@@ -1,0 +1,23 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["tsconfig.base.json"],
+  "globalPassThroughEnv": ["CI"],
+  "tasks": {
+    "build": {
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["NEXT_PUBLIC_*"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "typecheck": {},
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": ["NEXT_PUBLIC_*", "SUPABASE_*"]
+    },
+    "e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "passThroughEnv": ["NEXT_PUBLIC_*", "SUPABASE_*", "PLAYWRIGHT_*"]
+    }
+  }
+}

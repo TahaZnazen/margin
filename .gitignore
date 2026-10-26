@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output and caches
+.next/
+.turbo/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment: only the example is committed
+.env*
+!.env.example
+
+# Test output and evidence
+evidence/
+playwright-report/
+test-results/
+blob-report/
+
+# Golden PDF corpus: commit READMEs, scripts, the manifest and generated/ only
+/fixtures/pdfs/**
+!/fixtures/pdfs/**/
+!/fixtures/pdfs/**/README.md
+!/fixtures/pdfs/*.mjs
+!/fixtures/pdfs/*.ts
+!/fixtures/pdfs/manifest.json
+!/fixtures/pdfs/generated/**
+
+# Throwaway route written by apps/web/scripts/check-server-only.mjs
+apps/web/src/app/server-only-probe/
+
+# Local credential scratch file at the repo root (never commit)
+/pass
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.pem
+.vercel
+npm-debug.log*
+.pnpm-debug.log*

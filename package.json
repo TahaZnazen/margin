@@ -1,0 +1,26 @@
+{
+  "name": "margin",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24.11.0 <25"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck && tsc --noEmit",
+    "lint": "biome check",
+    "format": "biome check --write",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "e2e": "turbo run e2e"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.3",
+    "@types/node": "catalog:",
+    "turbo": "2.11.10",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
