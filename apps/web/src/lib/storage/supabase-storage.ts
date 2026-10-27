@@ -40,13 +40,18 @@ export function createSupabaseStorage(
       uppy.on("upload-progress", (_file, progress) => {
         onProgress?.(progress.bytesUploaded, progress.bytesTotal ?? data.size);
       });
+      let cancelled = false;
+      uppy.on("cancel-all", () => {
+        cancelled = true;
+      });
       return {
         start: () =>
           new Promise<void>((resolve, reject) => {
-            let cancelled = false;
-            uppy.on("cancel-all", () => {
-              cancelled = true;
-            });
+            if (cancelled) {
+              uppy.destroy();
+              reject(new Error("Cancelled"));
+              return;
+            }
             uppy.addFile({
               name: path.split("/").pop() ?? "file",
               type: contentType,
@@ -64,7 +69,10 @@ export function createSupabaseStorage(
               .catch(reject)
               .finally(() => uppy.destroy());
           }),
-        cancel: () => uppy.cancelAll(),
+        cancel: () => {
+          cancelled = true;
+          uppy.cancelAll();
+        },
       };
     },
 

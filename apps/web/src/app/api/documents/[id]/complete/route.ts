@@ -38,7 +38,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const coverPath = doc.storage_path.replace(/source\.pdf$/, "cover.webp");
 
   if (!verdict.ok) {
-    await supabase.from("documents").update({ read_status: "failed" }).eq("id", doc.id);
+    // Never downgrade a book that already completed (repeat or racing calls).
+    await supabase
+      .from("documents")
+      .update({ read_status: "failed" })
+      .eq("id", doc.id)
+      .eq("read_status", "uploading");
     return respond({ status: "failed", reason: verdict.reason });
   }
 
@@ -80,7 +85,9 @@ async function inspect(supabase: Supabase, path: string): Promise<Verdict> {
   const head = new TextDecoder().decode(await res.arrayBuffer()).slice(0, 5);
   if (head !== "%PDF-") return { ok: false, reason: "The uploaded file is not a valid PDF." };
   const range = res.headers.get("content-range")?.match(/\/(\d+)$/);
-  const byteSize = Number(range?.[1] ?? res.headers.get("content-length"));
+  const byteSize = Number(
+    range?.[1] ?? (res.status === 200 ? res.headers.get("content-length") : NaN),
+  );
   if (!Number.isFinite(byteSize) || byteSize <= 0) {
     return { ok: false, reason: "The uploaded file is empty." };
   }
