@@ -2,6 +2,8 @@ import { publicEnv } from "@/env";
 import type { StorageProvider } from "@/lib/storage/storage-provider";
 import { createSupabaseStorage } from "@/lib/storage/supabase-storage";
 import { createClient } from "@/lib/supabase/client";
+import type { AnnotationsRepo } from "../annotations/annotations-repo";
+import { createSupabaseAnnotationsRepo } from "../annotations/supabase-annotations-repo";
 import type { DocumentsRepo, ReadingStateRepo } from "./documents-repo";
 import {
   createSupabaseDocumentsRepo,
@@ -11,6 +13,7 @@ import {
 export interface Services {
   documents: DocumentsRepo;
   readingState: ReadingStateRepo;
+  annotations: AnnotationsRepo;
   storage: StorageProvider;
 }
 
@@ -23,6 +26,7 @@ export function services(): Services {
     cached = {
       documents: createSupabaseDocumentsRepo(supabase),
       readingState: createSupabaseReadingStateRepo(supabase),
+      annotations: createSupabaseAnnotationsRepo(supabase),
       storage: createSupabaseStorage(supabase, publicEnv().NEXT_PUBLIC_SUPABASE_URL),
     };
   }
