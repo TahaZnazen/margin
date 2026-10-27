@@ -224,6 +224,16 @@ class PdfJsDocument implements ReaderDocument {
     }
   }
 
+  async author(): Promise<string | undefined> {
+    try {
+      const meta = await this.#pdf.getMetadata();
+      const author = (meta.info as { Author?: unknown }).Author;
+      return typeof author === "string" && author.trim() ? author.trim() : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   releasePage(index: number): void {
     const page = this.#pages.get(index);
     void page?.then((p) => p.cleanup()).catch(() => {});

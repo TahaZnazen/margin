@@ -113,6 +113,7 @@ export interface ReaderDocument {
   search(query: string, signal?: AbortSignal): AsyncIterable<SearchHit>;
   outline(): Promise<OutlineItem[]>;
   title(): Promise<string | undefined>;
+  author(): Promise<string | undefined>;
   /** Frees the memory the engine holds for a page that scrolled far away. */
   releasePage(page: number): void;
   destroy(): Promise<void>;
