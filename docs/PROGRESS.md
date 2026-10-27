@@ -28,3 +28,13 @@ Each prompt in `prompts/` appends an entry here when it finishes, newest last. L
 - P05: add `src/proxy.ts` with `updateSession` from Supabase's SSR guide.
 - P12: add a guard so integration/E2E refuse to run against the production project.
 - Optional: pnpm 12 is out; upgrade `packageManager` in its own change.
+
+## P02 — Contracts: schema, RLS, annotation model, sync config · 2026-10-27 · branch p02-contracts
+**Built:** Drizzle schema for 7 tables (`documents`, `reading_state`, `annotations`, `notes`, `collections`, `collection_documents`, `user_settings`) with RLS (4 policies each, 28 total), `updated_at` trigger, explicit grants, a private `documents` storage bucket with per-user folder policies, and the `powersync` publication. `@margin/annotation-model` has per-kind target schemas, a row schema discriminated on `kind`, page/viewport transforms, `mergeLineRects` and `buildQuote`, with fast-check property tests (100% coverage on the package's source). `@margin/sync` has the PowerSync client schema and `powersync.yaml` (Sync Streams) with deploy steps in its README. ADRs 0001 and 0002. Two-user RLS/storage integration test and a migration re-run test. `@margin/*` wired into `apps/web`; CI runs `pnpm db:migrate` before integration.
+**Key files:** `packages/db/src/{schema,connection}.ts`, `packages/db/migrations/0000..0003`, `packages/db/scripts/powersync-role.ts`, `packages/db/src/{rls,migrations}.int.test.ts`, `packages/annotation-model/src/*`, `packages/sync/{powersync.yaml,README.md,src/schema.ts}`, `docs/adr/000{1,2}-*.md`.
+**Commands:** `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:powersync-role` (one-off, needs `POWERSYNC_DB_PASSWORD`).
+**New env vars / CI secrets:** `DATABASE_URL` (margin-dev session pooler, port 5432), `DATABASE_CA_CERT` (Supabase root CA, PEM text or file path; TLS verification is never disabled), `POWERSYNC_DB_PASSWORD` (local only). GitHub secrets: `DATABASE_URL`, `DATABASE_CA_CERT`.
+**Deviations from the prompt or docs:** Direct Postgres connections use `pg` with `rejectUnauthorized: true` and an explicit CA, because Supabase's certificate chains to its own CA (not in Node's trust store).
+**Follow-ups:**
+- P06 connects the PowerSync instance (steps in `packages/sync/README.md`) and validates `powersync.yaml`.
+- Run `pnpm db:migrate` and `pnpm test:integration` once `DATABASE_CA_CERT` is set (not verified in the session that wrote this entry).

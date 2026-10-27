@@ -3,11 +3,15 @@ packages:
   - packages/*
 
 catalog:
+  "@powersync/common": 2.4.0
+  "@supabase/supabase-js": 2.118.0
   "@types/node": ^24.19.2
+  drizzle-orm: 0.45.4
   typescript: 5.9.3
   vitest: 5.0.5
   zod: 4.6.7
 
 allowBuilds:
+  esbuild: false
   sharp: false
   unrs-resolver: false
