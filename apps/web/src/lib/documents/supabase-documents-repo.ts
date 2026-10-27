@@ -125,8 +125,13 @@ export function createSupabaseDocumentsRepo(supabase: SupabaseClient): Documents
 }
 
 export function createSupabaseReadingStateRepo(supabase: SupabaseClient): ReadingStateRepo {
+  // Latest position saved on this device. Saves are fire-and-forget, so a quick reopen can race
+  // the upsert and read an older row; this device's own latest write always wins over it.
+  const latest = new Map<string, ReadingState>();
   return {
     async get(documentId) {
+      const local = latest.get(documentId);
+      if (local) return local;
       const { data, error } = await supabase
         .from("reading_state")
         .select("page, offset_pt, zoom, percent, seconds_read")
@@ -145,6 +150,7 @@ export function createSupabaseReadingStateRepo(supabase: SupabaseClient): Readin
     },
 
     async save(documentId, state) {
+      latest.set(documentId, state);
       const { error } = await supabase.from("reading_state").upsert(
         {
           user_id: await userId(supabase),
