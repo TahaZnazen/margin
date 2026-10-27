@@ -50,6 +50,14 @@ export function publicEnv(): PublicEnv {
   return parse(publicSchema, readPublicVars());
 }
 
+/**
+ * Whether the sign-up form is offered (`ALLOW_SIGNUPS=true`, default false). This only hides the UI
+ * and gates the server action; the real guard is "Allow new users to sign up" in the Supabase dashboard.
+ */
+export function signupsAllowed(value: string | undefined = process.env.ALLOW_SIGNUPS): boolean {
+  return value?.trim().toLowerCase() === "true";
+}
+
 /** Server config, including secrets. */
 export function serverEnv(): ServerEnv {
   if (typeof window !== "undefined") {
