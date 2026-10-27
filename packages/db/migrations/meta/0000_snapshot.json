@@ -1,0 +1,1119 @@
+{
+  "id": "c2a33eb9-862c-4c88-ab1d-c3f216dccfd9",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.annotations": {
+      "name": "annotations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target": {
+          "name": "target",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page_start": {
+          "name": "page_start",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quote_text": {
+          "name": "quote_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "snapshot_path": {
+          "name": "snapshot_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "anchor_status": {
+          "name": "anchor_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'anchored'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "annotations_user_id_document_id_page_start_idx": {
+          "name": "annotations_user_id_document_id_page_start_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "page_start",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "annotations_user_id_users_id_fk": {
+          "name": "annotations_user_id_users_id_fk",
+          "tableFrom": "annotations",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "annotations_document_fk": {
+          "name": "annotations_document_fk",
+          "tableFrom": "annotations",
+          "tableTo": "documents",
+          "columnsFrom": ["user_id", "document_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "annotations_select_own": {
+          "name": "annotations_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"annotations\".\"user_id\" = (select auth.uid())"
+        },
+        "annotations_insert_own": {
+          "name": "annotations_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"annotations\".\"user_id\" = (select auth.uid())"
+        },
+        "annotations_update_own": {
+          "name": "annotations_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"annotations\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"annotations\".\"user_id\" = (select auth.uid())"
+        },
+        "annotations_delete_own": {
+          "name": "annotations_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"annotations\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "annotations_kind_check": {
+          "name": "annotations_kind_check",
+          "value": "\"annotations\".\"kind\" in ('highlight', 'area', 'bookmark', 'ink')"
+        },
+        "annotations_color_check": {
+          "name": "annotations_color_check",
+          "value": "\"annotations\".\"color\" in ('key', 'definition', 'example', 'memorize', 'confusing')"
+        },
+        "annotations_anchor_status_check": {
+          "name": "annotations_anchor_status_check",
+          "value": "\"annotations\".\"anchor_status\" in ('anchored', 'reanchored', 'orphaned')"
+        },
+        "annotations_highlight_check": {
+          "name": "annotations_highlight_check",
+          "value": "\"annotations\".\"kind\" <> 'highlight' or (\"annotations\".\"color\" is not null and \"annotations\".\"quote_text\" is not null and \"annotations\".\"quote_text\" <> '')"
+        },
+        "annotations_area_check": {
+          "name": "annotations_area_check",
+          "value": "\"annotations\".\"kind\" <> 'area' or \"annotations\".\"quote_text\" is null"
+        },
+        "annotations_bookmark_check": {
+          "name": "annotations_bookmark_check",
+          "value": "\"annotations\".\"kind\" <> 'bookmark' or (\"annotations\".\"color\" is null and \"annotations\".\"quote_text\" is null)"
+        },
+        "annotations_target_check": {
+          "name": "annotations_target_check",
+          "value": "case\n        when \"annotations\".\"kind\" = 'ink' then jsonb_typeof(\"annotations\".\"target\") = 'object'\n        when coalesce(jsonb_typeof(\"annotations\".\"target\" -> 'segments'), '') <> 'array'\n          or coalesce(jsonb_typeof(\"annotations\".\"target\" #> '{segments,0,rects}'), '') <> 'array'\n          then false\n        else (\"annotations\".\"target\" #>> '{segments,0,page}') = \"annotations\".\"page_start\"::text\n          and case \"annotations\".\"kind\"\n            when 'highlight' then \"annotations\".\"target\" ? 'quote'\n              and jsonb_array_length(\"annotations\".\"target\" #> '{segments,0,rects}') >= 1\n            when 'area' then not (\"annotations\".\"target\" ? 'quote')\n              and jsonb_array_length(\"annotations\".\"target\" -> 'segments') = 1\n              and jsonb_array_length(\"annotations\".\"target\" #> '{segments,0,rects}') = 1\n            else not (\"annotations\".\"target\" ? 'quote')\n              and jsonb_array_length(\"annotations\".\"target\" -> 'segments') = 1\n              and jsonb_array_length(\"annotations\".\"target\" #> '{segments,0,rects}') <= 1\n          end\n      end"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.collection_documents": {
+      "name": "collection_documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "collection_id": {
+          "name": "collection_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "collection_documents_user_id_collection_id_idx": {
+          "name": "collection_documents_user_id_collection_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "collection_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "collection_documents_user_id_document_id_idx": {
+          "name": "collection_documents_user_id_document_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "collection_documents_user_id_users_id_fk": {
+          "name": "collection_documents_user_id_users_id_fk",
+          "tableFrom": "collection_documents",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "collection_documents_collection_fk": {
+          "name": "collection_documents_collection_fk",
+          "tableFrom": "collection_documents",
+          "tableTo": "collections",
+          "columnsFrom": ["user_id", "collection_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "collection_documents_document_fk": {
+          "name": "collection_documents_document_fk",
+          "tableFrom": "collection_documents",
+          "tableTo": "documents",
+          "columnsFrom": ["user_id", "document_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "collection_documents_collection_id_document_id_key": {
+          "name": "collection_documents_collection_id_document_id_key",
+          "nullsNotDistinct": false,
+          "columns": ["collection_id", "document_id"]
+        }
+      },
+      "policies": {
+        "collection_documents_select_own": {
+          "name": "collection_documents_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"collection_documents\".\"user_id\" = (select auth.uid())"
+        },
+        "collection_documents_insert_own": {
+          "name": "collection_documents_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"collection_documents\".\"user_id\" = (select auth.uid())"
+        },
+        "collection_documents_update_own": {
+          "name": "collection_documents_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"collection_documents\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"collection_documents\".\"user_id\" = (select auth.uid())"
+        },
+        "collection_documents_delete_own": {
+          "name": "collection_documents_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"collection_documents\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.collections": {
+      "name": "collections",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "collections_user_id_users_id_fk": {
+          "name": "collections_user_id_users_id_fk",
+          "tableFrom": "collections",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "collections_user_id_id_key": {
+          "name": "collections_user_id_id_key",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "id"]
+        }
+      },
+      "policies": {
+        "collections_select_own": {
+          "name": "collections_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"collections\".\"user_id\" = (select auth.uid())"
+        },
+        "collections_insert_own": {
+          "name": "collections_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"collections\".\"user_id\" = (select auth.uid())"
+        },
+        "collections_update_own": {
+          "name": "collections_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"collections\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"collections\".\"user_id\" = (select auth.uid())"
+        },
+        "collections_delete_own": {
+          "name": "collections_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"collections\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.documents": {
+      "name": "documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author": {
+          "name": "author",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "page_count": {
+          "name": "page_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "storage_path": {
+          "name": "storage_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cover_path": {
+          "name": "cover_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_text_layer": {
+          "name": "has_text_layer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outline": {
+          "name": "outline",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "read_status": {
+          "name": "read_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'uploading'"
+        },
+        "ai_status": {
+          "name": "ai_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "annotations_imported_at": {
+          "name": "annotations_imported_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_opened_at": {
+          "name": "last_opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "documents_user_id_sha256_key": {
+          "name": "documents_user_id_sha256_key",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sha256",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"documents\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "documents_user_id_users_id_fk": {
+          "name": "documents_user_id_users_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "documents_user_id_id_key": {
+          "name": "documents_user_id_id_key",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "id"]
+        }
+      },
+      "policies": {
+        "documents_select_own": {
+          "name": "documents_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"documents\".\"user_id\" = (select auth.uid())"
+        },
+        "documents_insert_own": {
+          "name": "documents_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"documents\".\"user_id\" = (select auth.uid())"
+        },
+        "documents_update_own": {
+          "name": "documents_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"documents\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"documents\".\"user_id\" = (select auth.uid())"
+        },
+        "documents_delete_own": {
+          "name": "documents_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"documents\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "documents_sha256_check": {
+          "name": "documents_sha256_check",
+          "value": "\"documents\".\"sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "documents_read_status_check": {
+          "name": "documents_read_status_check",
+          "value": "\"documents\".\"read_status\" in ('uploading', 'readable', 'failed')"
+        },
+        "documents_ai_status_check": {
+          "name": "documents_ai_status_check",
+          "value": "\"documents\".\"ai_status\" in ('none', 'pending', 'processing', 'ready', 'failed')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.notes": {
+      "name": "notes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "doc_json": {
+          "name": "doc_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plain_text": {
+          "name": "plain_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "notes_user_id_document_id_idx": {
+          "name": "notes_user_id_document_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notes_user_id_users_id_fk": {
+          "name": "notes_user_id_users_id_fk",
+          "tableFrom": "notes",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "notes_document_fk": {
+          "name": "notes_document_fk",
+          "tableFrom": "notes",
+          "tableTo": "documents",
+          "columnsFrom": ["user_id", "document_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "notes_select_own": {
+          "name": "notes_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"notes\".\"user_id\" = (select auth.uid())"
+        },
+        "notes_insert_own": {
+          "name": "notes_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"notes\".\"user_id\" = (select auth.uid())"
+        },
+        "notes_update_own": {
+          "name": "notes_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"notes\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"notes\".\"user_id\" = (select auth.uid())"
+        },
+        "notes_delete_own": {
+          "name": "notes_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"notes\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.reading_state": {
+      "name": "reading_state",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page": {
+          "name": "page",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "offset_pt": {
+          "name": "offset_pt",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "zoom": {
+          "name": "zoom",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "percent": {
+          "name": "percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seconds_read": {
+          "name": "seconds_read",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "reading_state_user_id_users_id_fk": {
+          "name": "reading_state_user_id_users_id_fk",
+          "tableFrom": "reading_state",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "reading_state_document_fk": {
+          "name": "reading_state_document_fk",
+          "tableFrom": "reading_state",
+          "tableTo": "documents",
+          "columnsFrom": ["user_id", "document_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "reading_state_user_id_document_id_key": {
+          "name": "reading_state_user_id_document_id_key",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "document_id"]
+        }
+      },
+      "policies": {
+        "reading_state_select_own": {
+          "name": "reading_state_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"reading_state\".\"user_id\" = (select auth.uid())"
+        },
+        "reading_state_insert_own": {
+          "name": "reading_state_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"reading_state\".\"user_id\" = (select auth.uid())"
+        },
+        "reading_state_update_own": {
+          "name": "reading_state_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"reading_state\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"reading_state\".\"user_id\" = (select auth.uid())"
+        },
+        "reading_state_delete_own": {
+          "name": "reading_state_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"reading_state\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_settings": {
+      "name": "user_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'system'"
+        },
+        "highlight_labels": {
+          "name": "highlight_labels",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reader_prefs": {
+          "name": "reader_prefs",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_settings_user_id_users_id_fk": {
+          "name": "user_settings_user_id_users_id_fk",
+          "tableFrom": "user_settings",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_settings_user_id_key": {
+          "name": "user_settings_user_id_key",
+          "nullsNotDistinct": false,
+          "columns": ["user_id"]
+        }
+      },
+      "policies": {
+        "user_settings_select_own": {
+          "name": "user_settings_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"user_settings\".\"user_id\" = (select auth.uid())"
+        },
+        "user_settings_insert_own": {
+          "name": "user_settings_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["authenticated"],
+          "withCheck": "\"user_settings\".\"user_id\" = (select auth.uid())"
+        },
+        "user_settings_update_own": {
+          "name": "user_settings_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["authenticated"],
+          "using": "\"user_settings\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"user_settings\".\"user_id\" = (select auth.uid())"
+        },
+        "user_settings_delete_own": {
+          "name": "user_settings_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["authenticated"],
+          "using": "\"user_settings\".\"user_id\" = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "user_settings_theme_check": {
+          "name": "user_settings_theme_check",
+          "value": "\"user_settings\".\"theme\" in ('light', 'sepia', 'dark', 'system')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

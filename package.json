@@ -13,12 +13,18 @@
     "lint": "biome check",
     "format": "biome check --write",
     "test": "vitest run --project unit",
+    "fixtures": "node fixtures/pdfs/fetch.mjs",
     "test:integration": "vitest run --project integration",
-    "e2e": "turbo run e2e"
+    "test:coverage": "vitest run --project unit --coverage",
+    "e2e": "turbo run e2e",
+    "db:generate": "pnpm --filter @margin/db db:generate",
+    "db:migrate": "pnpm --filter @margin/db db:migrate",
+    "db:powersync-role": "pnpm --filter @margin/db db:powersync-role"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "5.0.5",
     "turbo": "2.11.10",
     "typescript": "catalog:",
     "vitest": "catalog:"

@@ -37,14 +37,21 @@ jobs:
     name: Integration (margin-dev)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Migrations and the two-user test write to margin-dev; one run at a time.
+    concurrency:
+      group: integration-margin-dev
+      cancel-in-progress: false
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/require-secrets
         with:
-          names: NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY SUPABASE_SECRET_KEY
+          names: NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY SUPABASE_SECRET_KEY DATABASE_URL DATABASE_CA_CERT
       - uses: ./.github/actions/setup
+      - run: pnpm db:migrate
       - run: pnpm test:integration

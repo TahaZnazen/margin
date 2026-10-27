@@ -7,9 +7,21 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:powersync-role": "node scripts/powersync-role.ts"
+  },
+  "dependencies": {
+    "@margin/annotation-model": "workspace:*",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "pg": "8.23.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

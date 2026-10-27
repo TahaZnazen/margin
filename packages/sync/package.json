@@ -9,7 +9,13 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@powersync/common": "catalog:"
+  },
   "devDependencies": {
+    "@margin/db": "workspace:*",
+    "@types/node": "catalog:",
+    "drizzle-orm": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

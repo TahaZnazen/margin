@@ -1,6 +1,5 @@
 /**
- * @margin/sync: PowerSync schema, sync rules and the upload connector (Contract).
- *
- * Empty until its work package lands; see docs/ROADMAP.md.
+ * @margin/sync: the sync contract. The PowerSync client schema (this module) and the Sync Streams
+ * config (packages/sync/powersync.yaml). P06 adds the database and the upload connector.
  */
-export const packageName = "@margin/sync";
+export * from "./schema";

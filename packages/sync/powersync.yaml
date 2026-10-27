@@ -1,0 +1,26 @@
+# PowerSync Sync Config (Contract). Sync Streams, PowerSync's GA mechanism (Sync Rules are legacy).
+#
+# One auto-subscribed stream carries every synced table, scoped to the signed-in user, so each
+# user has one bucket. `auth.user_id()` is the `sub` claim of the Supabase JWT, the same value
+# RLS compares with `auth.uid()`: the stream mirrors RLS (ARCHITECTURE §8).
+#
+# Soft-deleted rows (deleted_at set) sync too: they're the tombstones other devices need.
+# Clients filter `deleted_at IS NULL` in their queries.
+#
+# Deploy and validate: see packages/sync/README.md. Keep the table list in step with the
+# `powersync` publication (packages/db/migrations/0003) and the client schema (src/schema.ts);
+# src/schema.test.ts checks all three.
+config:
+  edition: 3
+
+streams:
+  user_data:
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM documents WHERE user_id = auth.user_id()
+      - SELECT * FROM reading_state WHERE user_id = auth.user_id()
+      - SELECT * FROM annotations WHERE user_id = auth.user_id()
+      - SELECT * FROM notes WHERE user_id = auth.user_id()
+      - SELECT * FROM collections WHERE user_id = auth.user_id()
+      - SELECT * FROM collection_documents WHERE user_id = auth.user_id()
+      - SELECT * FROM user_settings WHERE user_id = auth.user_id()
