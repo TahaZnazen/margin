@@ -48,3 +48,6 @@ npm-debug.log*
 
 # Supabase Postgres CA certificate (public, but kept local)
 *.crt
+
+# Copied from pdfjs-dist by apps/web/scripts/copy-pdfjs-assets.mjs
+/apps/web/public/pdfjs/
