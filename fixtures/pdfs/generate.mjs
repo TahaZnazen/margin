@@ -24,7 +24,6 @@ import {
   degrees,
   drawObject,
   PDFDocument,
-  PDFHexString,
   PDFName,
   PDFString,
   popGraphicsState,
@@ -59,7 +58,8 @@ const PRODUCER = "Margin fixtures/pdfs/generate.mjs (pdf-lib 1.17.1)";
 const GENERATED_LICENSE = {
   id: "CC0-1.0",
   url: "https://creativecommons.org/publicdomain/zero/1.0/",
-  attribution: "Synthesized by fixtures/pdfs/generate.mjs in this repository; no third-party content.",
+  attribution:
+    "Synthesized by fixtures/pdfs/generate.mjs in this repository; no third-party content.",
 };
 
 /** Ascender / descender per 1000 em, from Adobe's Core 14 AFM files. */
@@ -127,7 +127,12 @@ function placeText(page, pageIndex, font, fontName, text, x, y, size) {
   return {
     text,
     pageIndex,
-    rect: [r3(x), r3(y - (m.ascent / 1000) * size), r3(x + width), r3(y - (m.descent / 1000) * size)],
+    rect: [
+      r3(x),
+      r3(y - (m.ascent / 1000) * size),
+      r3(x + width),
+      r3(y - (m.descent / 1000) * size),
+    ],
     tolerance: EXACT_TOLERANCE,
     inTextLayer: true,
     font: fontName,
@@ -170,8 +175,18 @@ function drawGrid(page, font) {
 /** Red crosshair centered on a top-left point. @param {PDFPage} page @param {number} x @param {number} y */
 function drawMarker(page, x, y) {
   const color = rgb(0.85, 0, 0);
-  page.drawLine({ start: toUser(page, x - 8, y), end: toUser(page, x + 8, y), thickness: 0.5, color });
-  page.drawLine({ start: toUser(page, x, y - 8), end: toUser(page, x, y + 8), thickness: 0.5, color });
+  page.drawLine({
+    start: toUser(page, x - 8, y),
+    end: toUser(page, x + 8, y),
+    thickness: 0.5,
+    color,
+  });
+  page.drawLine({
+    start: toUser(page, x, y - 8),
+    end: toUser(page, x, y + 8),
+    thickness: 0.5,
+    color,
+  });
   const center = toUser(page, x, y);
   page.drawCircle({ x: center.x, y: center.y, size: 3, borderColor: color, borderWidth: 0.5 });
 }
@@ -209,7 +224,16 @@ async function buildRuler() {
     const page = doc.addPage([612, 792]);
     drawGrid(page, helv);
     knownText.push(
-      placeText(page, 0, bold, "Helvetica-Bold", "Margin ruler fixture, page 1: US Letter", 72, 60, 14),
+      placeText(
+        page,
+        0,
+        bold,
+        "Helvetica-Bold",
+        "Margin ruler fixture, page 1: US Letter",
+        72,
+        60,
+        14,
+      ),
     );
     /** @type {[number, number][]} */
     const samples = [
@@ -239,7 +263,16 @@ async function buildRuler() {
     drawArea(page, area);
     knownText.push(placeText(page, 0, helv, "Helvetica", "Area target 216 x 144 pt", 332, 476, 9));
     knownText.push(
-      placeText(page, 0, helv, "Helvetica", "Bottom margin sample near the page edge.", 72, 740, 10),
+      placeText(
+        page,
+        0,
+        helv,
+        "Helvetica",
+        "Bottom margin sample near the page edge.",
+        72,
+        740,
+        10,
+      ),
     );
     /** @type {[number, number][]} */
     const markers = [
@@ -267,14 +300,32 @@ async function buildRuler() {
     knownText.push(
       placeText(page, 1, bold, "Helvetica-Bold", "Margin ruler fixture, page 2: A4", 72, 60, 14),
     );
-    const mono = placeText(page, 1, courier, "Courier", "MONOSPACE 0123456789 abcdefghij", 100.5, 120.25, 12);
+    const mono = placeText(
+      page,
+      1,
+      courier,
+      "Courier",
+      "MONOSPACE 0123456789 abcdefghij",
+      100.5,
+      120.25,
+      12,
+    );
     knownText.push({
       ...mono,
       charWidth: 7.2,
       note: "Courier: every glyph advances exactly 0.6 em, so character i spans x0 + 7.2 * i to x0 + 7.2 * (i + 1).",
     });
     knownText.push(
-      placeText(page, 1, times, "Times-Roman", "Times Roman at a fractional origin", 72.25, 160.75, 16),
+      placeText(
+        page,
+        1,
+        times,
+        "Times-Roman",
+        "Times Roman at a fractional origin",
+        72.25,
+        160.75,
+        16,
+      ),
     );
     knownText.push(
       placeText(page, 1, helv, "Helvetica", "Tiny 4 pt text for high zoom checks", 72, 190, 4),
@@ -333,7 +384,12 @@ async function buildMixedPages() {
     { label: "A5, Rotate 180", size: [419.528, 595.276], rotate: 180 },
     { label: "US Legal, Rotate 270", size: [612, 1008], rotate: 270 },
     { label: "Landscape MediaBox 792 x 612, Rotate 0", size: [792, 612], rotate: 0 },
-    { label: "US Letter with CropBox offset (36, 54)", size: [612, 792], rotate: 0, crop: [36, 54, 540, 684] },
+    {
+      label: "US Letter with CropBox offset (36, 54)",
+      size: [612, 792],
+      rotate: 0,
+      crop: [36, 54, 540, 684],
+    },
   ];
   /** @type {KnownText[]} */
   const knownText = [];
@@ -354,7 +410,9 @@ async function buildMixedPages() {
       y: origin.y,
       color: rgb(0.2, 0.4, 0.9),
     });
-    knownText.push(placeText(page, i, helv, "Helvetica", `Page ${i + 1} of 6: ${spec.label}`, 48, 72, 14));
+    knownText.push(
+      placeText(page, i, helv, "Helvetica", `Page ${i + 1} of 6: ${spec.label}`, 48, 72, 14),
+    );
     knownText.push(
       placeText(page, i, helv, "Helvetica", "Text is drawn in unrotated page space.", 48, 100, 11),
     );
@@ -437,10 +495,28 @@ async function buildAnnotations() {
   const helv = await doc.embedFont(StandardFonts.Helvetica);
   const page = doc.addPage([612, 792]);
   const lines = [
-    placeText(page, 0, helv, "Helvetica", "This sentence carries a yellow imported highlight.", 72, 120, 12),
+    placeText(
+      page,
+      0,
+      helv,
+      "Helvetica",
+      "This sentence carries a yellow imported highlight.",
+      72,
+      120,
+      12,
+    ),
     placeText(page, 0, helv, "Helvetica", "This green highlight starts on this line", 72, 160, 12),
     placeText(page, 0, helv, "Helvetica", "and continues onto the next line here.", 72, 175, 12),
-    placeText(page, 0, helv, "Helvetica", "A sticky note is attached next to this sentence.", 72, 220, 12),
+    placeText(
+      page,
+      0,
+      helv,
+      "Helvetica",
+      "A sticky note is attached next to this sentence.",
+      72,
+      220,
+      12,
+    ),
     placeText(page, 0, helv, "Helvetica", "This line has no annotation at all.", 72, 260, 12),
   ];
   const [l1, l2, l3, l4] = /** @type {[KnownText, KnownText, KnownText, KnownText]} */ (lines);
@@ -449,7 +525,14 @@ async function buildAnnotations() {
   const yellow = [1, 0.92, 0.23];
   /** @type {[number, number, number]} */
   const green = [0.3, 0.85, 0.4];
-  const h1 = addHighlight(doc, page, [l1.rect], yellow, "Imported highlight: yellow, one line", "fixture-highlight-1");
+  const h1 = addHighlight(
+    doc,
+    page,
+    [l1.rect],
+    yellow,
+    "Imported highlight: yellow, one line",
+    "fixture-highlight-1",
+  );
   const h2 = addHighlight(
     doc,
     page,
@@ -537,19 +620,50 @@ const JS_MARKER = "MARGIN_FIXTURE_JS_EXECUTED";
 
 /** @param {PDFDocument} doc @param {string} where */
 const jsAction = (doc, where) =>
-  doc.context.obj({ Type: "Action", S: "JavaScript", JS: PDFString.of(`app.alert("${JS_MARKER}: ${where}");`) });
+  doc.context.obj({
+    Type: "Action",
+    S: "JavaScript",
+    JS: PDFString.of(`app.alert("${JS_MARKER}: ${where}");`),
+  });
 
 async function buildJavaScriptForms() {
   const doc = await newDoc("Margin forms and JavaScript fixture");
   const helv = await doc.embedFont(StandardFonts.Helvetica);
   const page = doc.addPage([612, 792]);
   const knownText = [
-    placeText(page, 0, helv, "Helvetica", "This file contains form fields and JavaScript.", 72, 72, 14),
-    placeText(page, 0, helv, "Helvetica", "A safe viewer renders it but never runs the scripts.", 72, 92, 12),
+    placeText(
+      page,
+      0,
+      helv,
+      "Helvetica",
+      "This file contains form fields and JavaScript.",
+      72,
+      72,
+      14,
+    ),
+    placeText(
+      page,
+      0,
+      helv,
+      "Helvetica",
+      "A safe viewer renders it but never runs the scripts.",
+      72,
+      92,
+      12,
+    ),
     placeText(page, 0, helv, "Helvetica", "Full name", 72, 140, 11),
     placeText(page, 0, helv, "Helvetica", "Subscribe", 72, 190, 11),
     placeText(page, 0, helv, "Helvetica", "Country", 72, 240, 11),
-    placeText(page, 0, helv, "Helvetica", "Click this line to run a JavaScript link action.", 72, 330, 11),
+    placeText(
+      page,
+      0,
+      helv,
+      "Helvetica",
+      "Click this line to run a JavaScript link action.",
+      72,
+      330,
+      11,
+    ),
   ];
   const form = doc.getForm();
   /** @param {Rect} rect top-left */
@@ -560,7 +674,10 @@ async function buildJavaScriptForms() {
   const name = form.createTextField("full_name");
   name.setText("Ada Lovelace");
   name.addToPage(page, { ...widgetBox(nameRect), font: helv });
-  name.acroField.dict.set(PDFName.of("AA"), doc.context.obj({ K: jsAction(doc, "field keystroke") }));
+  name.acroField.dict.set(
+    PDFName.of("AA"),
+    doc.context.obj({ K: jsAction(doc, "field keystroke") }),
+  );
 
   /** @type {Rect} */
   const subscribeRect = [160, 176, 176, 192];
@@ -579,7 +696,8 @@ async function buildJavaScriptForms() {
   const buttonRect = [160, 270, 300, 294];
   const button = form.createButton("run_script");
   button.addToPage("Run script", page, { ...widgetBox(buttonRect), font: helv });
-  for (const widget of button.acroField.getWidgets()) widget.dict.set(PDFName.of("A"), jsAction(doc, "button"));
+  for (const widget of button.acroField.getWidgets())
+    widget.dict.set(PDFName.of("A"), jsAction(doc, "button"));
 
   const linkLine = /** @type {KnownText} */ (knownText[5]);
   const [lx0, ly0, lx1, ly1] = linkLine.rect;
@@ -606,12 +724,25 @@ async function buildJavaScriptForms() {
       formFields: [
         { name: "full_name", type: "text", value: "Ada Lovelace", rect: nameRect },
         { name: "subscribe", type: "checkbox", value: true, rect: subscribeRect },
-        { name: "country", type: "dropdown", value: "Morocco", options: ["Canada", "France", "Morocco"], rect: countryRect },
+        {
+          name: "country",
+          type: "dropdown",
+          value: "Morocco",
+          options: ["Canada", "France", "Morocco"],
+          rect: countryRect,
+        },
         { name: "run_script", type: "button", rect: buttonRect },
       ],
       javascript: {
         marker: JS_MARKER,
-        locations: ["document level (Names /JavaScript)", "open action", "page open", "field keystroke", "button", "link"],
+        locations: [
+          "document level (Names /JavaScript)",
+          "open action",
+          "page open",
+          "field keystroke",
+          "button",
+          "link",
+        ],
         note: `Every script calls app.alert("${JS_MARKER}: <location>"). If that marker ever shows up, a script ran.`,
       },
     },
@@ -637,7 +768,9 @@ function seededBytes(seed, length) {
 
 /** ISO 32000-2 Algorithm 2.B (the R6 password hash). @param {Buffer} password @param {Buffer} salt @param {Buffer} userKey */
 function hashR6(password, salt, userKey) {
-  let k = createHash("sha256").update(Buffer.concat([password, salt, userKey])).digest();
+  let k = createHash("sha256")
+    .update(Buffer.concat([password, salt, userKey]))
+    .digest();
   /** @type {Buffer} */
   let e = Buffer.alloc(0);
   for (let round = 0; round < 64 || /** @type {number} */ (e.at(-1)) > round - 32; round++) {
@@ -688,7 +821,11 @@ async function buildEncrypted() {
   const random = seededBytes("margin-encrypted-fixture", 32 + 16 * 3 + 4 + 16 * 4);
   let cursor = 0;
   /** @param {number} n */
-  const take = (n) => random.subarray(cursor, (cursor += n));
+  const take = (n) => {
+    const part = random.subarray(cursor, cursor + n);
+    cursor += n;
+    return part;
+  };
   const fileKey = take(32);
   const userPassword = Buffer.from(ENCRYPTED_USER_PASSWORD, "utf8");
   const ownerPassword = Buffer.from(ENCRYPTED_OWNER_PASSWORD, "utf8");
@@ -698,9 +835,23 @@ async function buildEncrypted() {
   const ownerKeySalt = take(8);
   const zeroIv = Buffer.alloc(16);
 
-  const u = Buffer.concat([hashR6(userPassword, userValidationSalt, Buffer.alloc(0)), userValidationSalt, userKeySalt]);
-  const ue = aes("aes-256-cbc", hashR6(userPassword, userKeySalt, Buffer.alloc(0)), zeroIv, fileKey, false);
-  const o = Buffer.concat([hashR6(ownerPassword, ownerValidationSalt, u), ownerValidationSalt, ownerKeySalt]);
+  const u = Buffer.concat([
+    hashR6(userPassword, userValidationSalt, Buffer.alloc(0)),
+    userValidationSalt,
+    userKeySalt,
+  ]);
+  const ue = aes(
+    "aes-256-cbc",
+    hashR6(userPassword, userKeySalt, Buffer.alloc(0)),
+    zeroIv,
+    fileKey,
+    false,
+  );
+  const o = Buffer.concat([
+    hashR6(ownerPassword, ownerValidationSalt, u),
+    ownerValidationSalt,
+    ownerKeySalt,
+  ]);
   const oe = aes("aes-256-cbc", hashR6(ownerPassword, ownerKeySalt, u), zeroIv, fileKey, false);
   const permissions = -4; // everything allowed; bits 1-2 must be 0
   const permsPlain = Buffer.alloc(16);
@@ -718,7 +869,10 @@ async function buildEncrypted() {
   const hex = (/** @type {Buffer} */ b) => `<${b.toString("hex").toUpperCase()}>`;
 
   const content = lines
-    .map(({ text, x, y, size }) => `BT /F1 ${size} Tf ${x} ${r3(792 - y)} Td ${pdfLiteral(text)} Tj ET`)
+    .map(
+      ({ text, x, y, size }) =>
+        `BT /F1 ${size} Tf ${x} ${r3(792 - y)} Td ${pdfLiteral(text)} Tj ET`,
+    )
     .join("\n");
   const encryptedContent = encrypt(Buffer.from(content, "latin1"));
 
@@ -804,7 +958,16 @@ async function buildCorrupted() {
   for (let i = 0; i < 3; i++) {
     const page = doc.addPage([612, 792]);
     knownText.push(
-      placeText(page, i, helv, "Helvetica", `Page ${i + 1} of a file that was cut off mid-download.`, 72, 100, 14),
+      placeText(
+        page,
+        i,
+        helv,
+        "Helvetica",
+        `Page ${i + 1} of a file that was cut off mid-download.`,
+        72,
+        100,
+        14,
+      ),
     );
   }
   const full = await save(doc);
@@ -877,7 +1040,18 @@ async function buildSized(title, sentence, targetBytes) {
       popGraphicsState(),
     );
     page.drawRectangle({ x: 60, y: 690, width: 492, height: 40, color: rgb(1, 1, 1) });
-    knownText.push(placeText(page, i, helv, "Helvetica", `${sentence} Page ${i + 1} of ${pageCount}.`, 72, 82, 12));
+    knownText.push(
+      placeText(
+        page,
+        i,
+        helv,
+        "Helvetica",
+        `${sentence} Page ${i + 1} of ${pageCount}.`,
+        72,
+        82,
+        12,
+      ),
+    );
   }
   return {
     bytes: await save(doc),
@@ -953,7 +1127,8 @@ export const GENERATED = [
     file: "generated/corrupted-truncated.pdf",
     title: "Corrupted PDF: truncated mid-file",
     cases: ["corrupted"],
-    tests: "Graceful failure on a damaged upload: clear error or partial render, never a crash or hang.",
+    tests:
+      "Graceful failure on a damaged upload: clear error or partial render, never a crash or hang.",
     large: false,
     build: buildCorrupted,
   },
@@ -962,10 +1137,17 @@ export const GENERATED = [
     file: "generated-large/size-under-cap.pdf",
     title: "47 MB PDF, just under the 50 MB storage cap",
     cases: ["size-under-cap"],
-    tests: "Upload limit: accepted under both the decimal (50,000,000 B) and binary (52,428,800 B) reading of 50 MB.",
+    tests:
+      "Upload limit: accepted under both the decimal (50,000,000 B) and binary (52,428,800 B) reading of 50 MB.",
     large: true,
-    notes: "Generated rather than downloaded so the size is exact and stable. Ten pages of incompressible noise.",
-    build: () => buildSized("Margin size fixture: under the cap", "Margin size fixture just under the 50 MB cap.", 47_000_000),
+    notes:
+      "Generated rather than downloaded so the size is exact and stable. Ten pages of incompressible noise.",
+    build: () =>
+      buildSized(
+        "Margin size fixture: under the cap",
+        "Margin size fixture just under the 50 MB cap.",
+        47_000_000,
+      ),
   },
   {
     id: "size-over-cap",
@@ -974,8 +1156,14 @@ export const GENERATED = [
     cases: ["size-over-cap"],
     tests: "Upload limit: rejected before upload under both readings of 50 MB.",
     large: true,
-    notes: "Generated rather than downloaded so the size is exact and stable. Ten pages of incompressible noise.",
-    build: () => buildSized("Margin size fixture: over the cap", "Margin size fixture just over the 50 MB cap.", 54_000_000),
+    notes:
+      "Generated rather than downloaded so the size is exact and stable. Ten pages of incompressible noise.",
+    build: () =>
+      buildSized(
+        "Margin size fixture: over the cap",
+        "Margin size fixture just over the 50 MB cap.",
+        54_000_000,
+      ),
   },
 ];
 
@@ -1034,7 +1222,9 @@ async function main() {
     }
     const { bytes, entry } = await buildGenerated(spec);
     if (!spec.large && bytes.length >= 200 * 1024) {
-      throw new Error(`${spec.file} is ${bytes.length} bytes; committed fixtures must stay under 200 KB`);
+      throw new Error(
+        `${spec.file} is ${bytes.length} bytes; committed fixtures must stay under 200 KB`,
+      );
     }
     const target = join(PDFS_DIR, spec.file);
     mkdirSync(dirname(target), { recursive: true });
@@ -1042,7 +1232,10 @@ async function main() {
     generatedEntries.push(entry);
     console.log(`wrote ${spec.file} (${bytes.length} bytes, sha256 ${entry.sha256.slice(0, 12)}…)`);
   }
-  manifest.entries = [...manifest.entries.filter((e) => e.source.kind !== "generated"), ...generatedEntries];
+  manifest.entries = [
+    ...manifest.entries.filter((e) => e.source.kind !== "generated"),
+    ...generatedEntries,
+  ];
   writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
   formatWithBiome(MANIFEST_PATH);
   console.log(`updated ${MANIFEST_PATH}`);

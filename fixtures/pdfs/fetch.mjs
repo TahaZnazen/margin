@@ -15,7 +15,16 @@
  *   --skip-large         skip entries of 40 MB or more (the textbook, the 161 MB atlas, the size-cap files)
  */
 import { createHash } from "node:crypto";
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -23,7 +32,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * @typedef {{ kind: "download"; url: string } | { kind: "generated" }} Source
- * @typedef {{ id: string; file: string; sha256: string; bytes: number; source: Source }} Entry
+ * @typedef {{ id: string; file: string; sha256: string; bytes: number; source: Source; status?: string }} Entry
  */
 
 const PDFS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -42,7 +51,8 @@ async function hashFile(file) {
 /** Resolves an entry's file and refuses anything that escapes fixtures/pdfs. @param {Entry} entry */
 function targetPath(entry) {
   const target = resolve(PDFS_DIR, entry.file);
-  if (!target.startsWith(PDFS_DIR + sep)) throw new Error(`${entry.id}: file path escapes fixtures/pdfs: ${entry.file}`);
+  if (!target.startsWith(PDFS_DIR + sep))
+    throw new Error(`${entry.id}: file path escapes fixtures/pdfs: ${entry.file}`);
   return target;
 }
 
@@ -67,7 +77,10 @@ async function download(entry, target) {
   let idle;
   const resetIdle = () => {
     clearTimeout(idle);
-    idle = setTimeout(() => controller.abort(new Error(`no data for ${IDLE_TIMEOUT_MS / 1000} s`)), IDLE_TIMEOUT_MS);
+    idle = setTimeout(
+      () => controller.abort(new Error(`no data for ${IDLE_TIMEOUT_MS / 1000} s`)),
+      IDLE_TIMEOUT_MS,
+    );
   };
   try {
     resetIdle();
@@ -76,7 +89,8 @@ async function download(entry, target) {
       redirect: "follow",
       signal: controller.signal,
     });
-    if (!response.ok || !response.body) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    if (!response.ok || !response.body)
+      throw new Error(`HTTP ${response.status} ${response.statusText}`);
     const hash = createHash("sha256");
     let received = 0;
     let nextReport = 0.1;
@@ -89,14 +103,20 @@ async function download(entry, target) {
           process.stdout.write(`  ${entry.id}: ${Math.round((received / entry.bytes) * 100)}%\n`);
           nextReport += 0.1;
         }
-        if (received > entry.bytes) callback(new Error(`more than the expected ${entry.bytes} bytes`));
+        if (received > entry.bytes)
+          callback(new Error(`more than the expected ${entry.bytes} bytes`));
         else callback(null, chunk);
       },
     });
-    await pipeline(Readable.fromWeb(/** @type {import("node:stream/web").ReadableStream} */ (response.body)), meter, createWriteStream(part));
+    await pipeline(
+      Readable.fromWeb(/** @type {import("node:stream/web").ReadableStream} */ (response.body)),
+      meter,
+      createWriteStream(part),
+    );
     const digest = hash.digest("hex");
     if (received !== entry.bytes) throw new Error(`got ${received} bytes, expected ${entry.bytes}`);
-    if (digest !== entry.sha256) throw new Error(`sha256 ${digest} does not match the manifest (${entry.sha256})`);
+    if (digest !== entry.sha256)
+      throw new Error(`sha256 ${digest} does not match the manifest (${entry.sha256})`);
     renameSync(part, target);
   } finally {
     clearTimeout(idle);
@@ -128,15 +148,23 @@ async function ensure(entry) {
   const source = entry.source;
   if (source.kind === "generated") {
     await generate(entry, target);
-    return { status: existed ? "regenerated" : "generated", detail: `${name} (${mb(entry.bytes)})` };
+    return {
+      status: existed ? "regenerated" : "generated",
+      detail: `${name} (${mb(entry.bytes)})`,
+    };
   }
   /** @type {unknown} */
   let lastError;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      console.log(`  ${entry.id}: downloading ${mb(entry.bytes)} from ${new URL(source.url).host} (attempt ${attempt})`);
+      console.log(
+        `  ${entry.id}: downloading ${mb(entry.bytes)} from ${new URL(source.url).host} (attempt ${attempt})`,
+      );
       await download({ ...entry, source }, target);
-      return { status: existed ? "re-downloaded" : "downloaded", detail: `${name} (${mb(entry.bytes)})` };
+      return {
+        status: existed ? "re-downloaded" : "downloaded",
+        detail: `${name} (${mb(entry.bytes)})`,
+      };
     } catch (error) {
       lastError = error;
       if (attempt < ATTEMPTS) await new Promise((r) => setTimeout(r, 2000 * attempt));
@@ -161,6 +189,10 @@ async function main() {
   let changed = 0;
   for (const entry of manifest.entries) {
     if (only && !only.has(entry.id)) continue;
+    if (entry.status?.startsWith("skipped")) {
+      console.log(`skip         ${entry.id} (${entry.status})`);
+      continue;
+    }
     if (skipLarge && entry.bytes >= LARGE_BYTES) {
       console.log(`skip         ${entry.id} (${mb(entry.bytes)}, --skip-large)`);
       continue;
@@ -171,7 +203,9 @@ async function main() {
       console.log(`${status.padEnd(12)} ${entry.id.padEnd(26)} ${detail}`);
     } catch (error) {
       failures++;
-      console.error(`FAILED       ${entry.id.padEnd(26)} ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `FAILED       ${entry.id.padEnd(26)} ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
   const seconds = ((Date.now() - started) / 1000).toFixed(1);

@@ -177,6 +177,9 @@ importers:
 
   packages/reader:
     devDependencies:
+      '@margin/fixtures':
+        specifier: workspace:*
+        version: link:../../fixtures
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
