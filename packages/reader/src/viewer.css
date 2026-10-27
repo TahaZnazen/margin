@@ -1,0 +1,264 @@
+/* @margin/reader viewer styles. Colors come from the @margin/ui theme tokens (--page-bg etc.). */
+
+.mr-viewer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+.mr-scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+  overscroll-behavior: contain;
+}
+
+.mr-pages {
+  position: relative;
+  margin: 0 auto;
+}
+
+.mr-page {
+  position: absolute;
+  isolation: isolate;
+  background: var(--page-tint);
+  box-shadow: var(--shadow-md);
+}
+
+.mr-canvas-host {
+  position: absolute;
+  inset: 0;
+}
+
+.mr-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: var(--page-filter);
+}
+
+/* Sepia: the white page paper is multiplied by the warm tint behind it. */
+.sepia .mr-canvas {
+  mix-blend-mode: multiply;
+}
+
+/* Dark: optionally invert instead of only dimming. */
+.dark .mr-viewer[data-invert="true"] .mr-canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+/* Page space: laid out in PDF points (top-left origin) and scaled by an inline matrix. */
+.mr-space {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.mr-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mr-textlayer {
+  pointer-events: auto;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+}
+
+.mr-textlayer > span {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  transform-origin: 0 0;
+  cursor: text;
+  user-select: text;
+}
+
+.mr-textlayer > br {
+  display: none;
+}
+
+.mr-textlayer ::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: transparent;
+}
+
+.mr-hit {
+  position: absolute;
+  background: var(--hl-key-fill, rgb(255 214 0 / 0.4));
+  mix-blend-mode: var(--hl-blend, multiply);
+  border-radius: 2px;
+}
+
+.mr-hit-current {
+  outline: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.mr-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--page-bg) 70%, transparent);
+}
+
+.mr-error {
+  color: var(--text);
+}
+
+.mr-password {
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+.mr-password input {
+  min-width: 16rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.mr-password-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mr-password-actions button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mr-password-actions button[type="submit"] {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+/* Outline */
+.mr-outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mr-outline-list[data-depth="1"],
+.mr-outline-list[data-depth="2"],
+.mr-outline-list[data-depth="3"] {
+  padding-left: 0.9rem;
+}
+
+.mr-outline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  border-radius: var(--radius-sm, 0.25rem);
+}
+
+.mr-outline-row[data-current="true"] {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+.mr-outline-toggle {
+  flex: none;
+  width: 1.1rem;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mr-outline-link {
+  flex: 1;
+  min-width: 0;
+  padding: 0.2rem 0.25rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mr-outline-link:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.mr-empty {
+  padding: 1rem;
+  color: var(--text-muted);
+}
+
+/* Thumbnails */
+.mr-thumbs {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mr-thumb button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.mr-thumb-page {
+  background: var(--page-tint);
+  box-shadow: var(--shadow-sm);
+}
+
+.mr-thumb-page canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: var(--page-filter);
+}
+
+.sepia .mr-thumb-page canvas {
+  mix-blend-mode: multiply;
+}
+
+.mr-thumb[data-current="true"] .mr-thumb-page {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mr-viewer * {
+    scroll-behavior: auto;
+  }
+}

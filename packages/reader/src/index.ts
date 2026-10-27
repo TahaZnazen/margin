@@ -1,6 +1,23 @@
 /**
- * @margin/reader: the ReaderEngine interface, the engine adapter and the React viewer.
- *
- * Empty until its work package lands; see docs/ROADMAP.md.
+ * @margin/reader: the ReaderEngine interface (ADR-0003), the PDF.js adapter and the React viewer.
+ * Import "@margin/reader/viewer.css" once in the app.
  */
-export const packageName = "@margin/reader";
+export * from "./engine";
+export { pdfJsEngine } from "./pdfjs-engine";
+export { buildPageText, findInText, normalizeForSearch, rangeBoxes, runRect } from "./text";
+export { Outline, type OutlineProps } from "./viewer/Outline";
+export { currentChapter, flattenOutline } from "./viewer/outline-utils";
+export type { OverlayContext } from "./viewer/PageSlot";
+export {
+  CSS_UNITS,
+  type FindState,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  PdfViewer,
+  type PdfViewerHandle,
+  type PdfViewerProps,
+  type ShortcutName,
+  type ViewerState,
+  ZOOM_STEPS,
+} from "./viewer/PdfViewer";
+export { Thumbnails, type ThumbnailsProps } from "./viewer/Thumbnails";
