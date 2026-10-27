@@ -45,3 +45,6 @@ npm-debug.log*
 
 # Agent worktrees
 .claude/worktrees/
+
+# Supabase Postgres CA certificate (public, but kept local)
+*.crt
