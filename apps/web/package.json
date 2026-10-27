@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@margin/ui": "workspace:*",
+    "lucide-react": "1.61.0",
     "@margin/annotation-model": "workspace:*",
     "@margin/db": "workspace:*",
     "@supabase/ssr": "0.12.7",

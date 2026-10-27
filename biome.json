@@ -39,6 +39,16 @@
       "test": "recommended"
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/ui/src/components/**"],
+      "linter": {
+        "rules": {
+          "a11y": { "useSemanticElements": "off", "useKeyWithClickEvents": "off" }
+        }
+      }
+    }
+  ],
   "assist": {
     "actions": {
       "source": {

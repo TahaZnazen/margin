@@ -14,7 +14,8 @@
     "./components/*": "./src/components/*.tsx",
     "./lib/*": "./src/lib/*.ts",
     "./hooks/*": "./src/hooks/*.ts",
-    "./theme": "./src/theme/index.ts"
+    "./theme": "./src/theme/index.ts",
+    "./highlight": "./src/highlight/palette.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

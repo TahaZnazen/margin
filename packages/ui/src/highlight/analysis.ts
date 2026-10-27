@@ -77,7 +77,8 @@ export function textContrast(color: HighlightColor, mode: PageMode): number {
 export function underlineContrast(color: HighlightColor, mode: PageMode): number {
   const swatch = HIGHLIGHT_PALETTE[color];
   const { paper } = renderPage(hexToRgb("#000000"), mode);
-  const underline = mode === "light" || mode === "sepia" ? swatch.underlineLight : swatch.underlineDark;
+  const underline =
+    mode === "light" || mode === "sepia" ? swatch.underlineLight : swatch.underlineDark;
   return contrast(paper, hexToRgb(underline));
 }
 

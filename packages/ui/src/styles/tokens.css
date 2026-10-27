@@ -9,17 +9,16 @@
  *   3. shadcn/ui aliases (--background, --primary, ...) so generated components work unchanged.
  *   4. Highlight palette (must match packages/ui/src/highlight/palette.ts).
  *
- * DIRECTION CANDIDATES (P03 step 1): "paper" is the default block; "graphite" overrides it via
- * [data-direction="graphite"] on <html>. The losing direction is deleted once the user picks.
+ * Direction: "Calm paper" (warm off-white, serif titles, quiet chrome).
  */
 
 /* ── 1. Scales ───────────────────────────────────────────────────────────── */
 
 :root {
   /* Type. UI text is 14 px; reading-adjacent text (notes) is 16 px. Nothing below 12 px. */
-  --font-ui: var(--font-paper-ui), ui-sans-serif, system-ui, sans-serif;
-  --font-title: var(--font-paper-title), ui-serif, Georgia, serif;
-  --font-num: var(--font-paper-ui), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-ui-face), ui-sans-serif, system-ui, sans-serif;
+  --font-title: var(--font-title-face), ui-serif, Georgia, serif;
+  --font-num: var(--font-ui-face), ui-sans-serif, system-ui, sans-serif;
 
   /* Radius: one base, derived steps in globals.css (@theme). */
   --radius: 0.375rem;
@@ -51,7 +50,7 @@
   }
 }
 
-/* ── 2. Semantic colors · direction "paper" ──────────────────────────────── */
+/* ── 2. Semantic colors · "Calm paper" ──────────────────────────────── */
 
 :root,
 .light {
@@ -80,6 +79,8 @@
 }
 
 .sepia {
+  /* Tailwind also has a `sepia` filter utility with the same class name; never apply it. */
+  filter: none;
   color-scheme: light;
   --bg: #f3ead8;
   --surface: #f8f1e3;
@@ -130,85 +131,6 @@
   --shadow-strength: 40%;
 }
 
-/* ── 2b. Direction candidate "graphite" (delete after the pick) ─────────── */
-
-:root[data-direction="graphite"] {
-  --font-ui: var(--font-graphite-ui), ui-sans-serif, system-ui, sans-serif;
-  --font-title: var(--font-graphite-title), ui-serif, Georgia, serif;
-  --font-num: var(--font-graphite-num), ui-monospace, monospace;
-  --radius: 0.625rem;
-}
-
-:root[data-direction="graphite"],
-:root[data-direction="graphite"] .light,
-:root[data-direction="graphite"].light {
-  --bg: #f6f7f8;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-hover: #eef0f2;
-  --text: #121417;
-  --text-muted: #5a606a;
-  --border: #e3e6ea;
-  --border-strong: #868d97;
-  --accent: #3d4fd6;
-  --accent-fg: #ffffff;
-  --accent-subtle: #e9ecfd;
-  --danger: #c4321f;
-  --danger-fg: #ffffff;
-  --success: #1f7a4d;
-  --focus-ring: #3d4fd6;
-  --scrim: #12141733;
-  --page-bg: #eceef1;
-  --shadow-color: #1a2233;
-  --shadow-strength: 9%;
-}
-
-:root[data-direction="graphite"] .sepia,
-:root[data-direction="graphite"].sepia {
-  --bg: #f2ead9;
-  --surface: #f9f3e6;
-  --surface-raised: #fcf8ef;
-  --surface-hover: #ebe0c9;
-  --text: #2a2216;
-  --text-muted: #61523d;
-  --border: #e0d4bc;
-  --border-strong: #8f7d5a;
-  --accent: #3a49c4;
-  --accent-fg: #ffffff;
-  --accent-subtle: #e6e3ea;
-  --danger: #b02e1c;
-  --danger-fg: #ffffff;
-  --success: #2f6a35;
-  --focus-ring: #3a49c4;
-  --scrim: #2a221633;
-  --page-bg: #e7dcc6;
-  --shadow-color: #4a361a;
-  --shadow-strength: 9%;
-}
-
-:root[data-direction="graphite"] .dark,
-:root[data-direction="graphite"].dark {
-  --bg: #0f1012;
-  --surface: #151619;
-  --surface-raised: #1c1e22;
-  --surface-hover: #25282d;
-  --text: #e9eaed;
-  --text-muted: #9ba1ab;
-  --border: #2a2d33;
-  --border-strong: #656c77;
-  --accent: #8b97ff;
-  --accent-fg: #0d1030;
-  --accent-subtle: #1c2040;
-  --danger: #ff8b7b;
-  --danger-fg: #2a0d09;
-  --success: #6fd39b;
-  --focus-ring: #8b97ff;
-  --scrim: #00000080;
-  --page-bg: #0b0c0e;
-  --shadow-color: #000000;
-  --shadow-strength: 50%;
-}
-
 /* ── 3. shadcn/ui aliases ─────────────────────────────────────────────────
  * Declared on every theme root (not only :root) so a nested theme scope recomputes them.
  * Note the naming clash: shadcn's "accent" is a subtle hover fill; Margin's brand accent is
@@ -245,7 +167,7 @@
     0 2px 4px -2px color-mix(in srgb, var(--shadow-color) var(--shadow-strength), transparent);
   --shadow-lg:
     0 16px 40px -8px
-      color-mix(in srgb, var(--shadow-color) calc(var(--shadow-strength) * 1.6), transparent),
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-strength) * 1.6), transparent),
     0 4px 10px -4px color-mix(in srgb, var(--shadow-color) var(--shadow-strength), transparent);
 }
 
