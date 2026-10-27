@@ -1,4 +1,8 @@
+import { Toaster } from "@margin/ui/components/sonner";
+import { TooltipProvider } from "@margin/ui/components/tooltip";
+import { ThemeScript, ThemeSync } from "@margin/ui/theme";
 import type { Metadata } from "next";
+import { fontVariables } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,8 +12,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">{children}</body>
+    // The theme script adds the theme class before hydration, hence suppressHydrationWarning.
+    <html lang="en" className={`h-full ${fontVariables}`} suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
+      <body className="flex min-h-full flex-col">
+        <ThemeSync />
+        <TooltipProvider delayDuration={400}>{children}</TooltipProvider>
+        <Toaster />
+      </body>
     </html>
   );
 }

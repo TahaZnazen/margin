@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
       <h1 className="font-semibold text-4xl tracking-tight">Margin</h1>
-      <Suspense fallback={<p className="text-muted text-sm">Supabase: checking…</p>}>
+      <Suspense fallback={<p className="text-muted-foreground text-sm">Supabase: checking…</p>}>
         <SupabaseHealth />
       </Suspense>
     </main>
@@ -34,7 +34,7 @@ function HealthLine({
   detail?: string;
 }) {
   return (
-    <p className="text-muted text-sm" data-testid="supabase-health" data-status={status}>
+    <p className="text-muted-foreground text-sm" data-testid="supabase-health" data-status={status}>
       Supabase: <strong className="text-foreground">{label}</strong>
       {detail ? <span> · {detail}</span> : null}
     </p>
