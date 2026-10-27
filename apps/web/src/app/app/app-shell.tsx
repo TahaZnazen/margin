@@ -39,7 +39,11 @@ function useSettingsTheme() {
     createSupabaseSettingsRepo(createClient())
       .get()
       .then((settings) => {
-        if (!cancelled && settings.theme !== preference) setPreference(settings.theme);
+        // Skip if the user changed the theme while this request was in flight.
+        const current = document.documentElement.getAttribute("data-theme-preference");
+        if (!cancelled && current === preference && settings.theme !== preference) {
+          setPreference(settings.theme);
+        }
       })
       .catch(() => {
         // Offline or not yet saved: keep the local preference.
