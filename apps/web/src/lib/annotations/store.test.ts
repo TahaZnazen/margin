@@ -104,3 +104,21 @@ describe("annotation store", () => {
     expect(store.get("a")).toBeDefined();
   });
 });
+
+describe("annotation store load race", () => {
+  it("keeps an annotation created while the list request was out", async () => {
+    const { repo } = fakeRepo();
+    let release: (rows: Annotation[]) => void = () => undefined;
+    repo.list = () =>
+      new Promise((resolve) => {
+        release = resolve;
+      });
+    const store = createAnnotationStore(repo, "d1");
+    const loading = store.load();
+    store.create(make("a"));
+    await settle();
+    release([]);
+    await loading;
+    expect(store.get("a")).toBeDefined();
+  });
+});

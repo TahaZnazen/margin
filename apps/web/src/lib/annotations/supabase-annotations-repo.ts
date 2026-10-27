@@ -63,6 +63,7 @@ export function createSupabaseAnnotationsRepo(supabase: SupabaseClient): Annotat
           quote_text: a.quoteText,
           comment: a.comment,
           anchor_status: a.anchorStatus,
+          created_at: a.createdAt,
           updated_at: new Date().toISOString(),
           deleted_at: null,
         },

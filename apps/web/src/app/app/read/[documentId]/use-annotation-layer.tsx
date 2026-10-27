@@ -204,9 +204,13 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
   const copyCitation = useCallback(
     (a: { quote: string; page: number }) => {
       const text = `"${a.quote}" — ${title}, p. ${a.page + 1}`;
-      void navigator.clipboard?.writeText(text).catch(() => undefined);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      navigator.clipboard
+        ?.writeText(text)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        })
+        .catch(() => undefined);
     },
     [title],
   );

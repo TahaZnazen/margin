@@ -57,6 +57,8 @@ export function createAnnotationStore(
   let failures = 0;
   let flushing = false;
   let inflight: string | null = null;
+  // Ids written locally while a list request is out: that response may predate them.
+  const touched = new Set<string>();
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
   const build = (): AnnotationSnapshot => ({
@@ -119,11 +121,13 @@ export function createAnnotationStore(
 
   function put(a: Annotation) {
     items.set(a.id, a);
+    touched.add(a.id);
     queue(a.id, "save");
   }
 
   function drop(id: string) {
     items.delete(id);
+    touched.add(id);
     queue(id, "remove");
   }
 
@@ -139,9 +143,10 @@ export function createAnnotationStore(
 
     /** Merges the server's rows in; writes still pending on this device win. */
     async load() {
+      touched.clear();
       const rows = await repo.list(documentId);
       const server = new Map(rows.map((row) => [row.id, row]));
-      const busy = (id: string) => pending.has(id) || inflight === id;
+      const busy = (id: string) => pending.has(id) || inflight === id || touched.has(id);
       for (const id of [...items.keys()]) if (!(server.has(id) || busy(id))) items.delete(id);
       for (const [id, row] of server) if (!busy(id)) items.set(id, row);
       loaded = true;
@@ -190,32 +195,32 @@ export function createAnnotationStore(
       const entry = undoStack.pop();
       if (!entry) return null;
       redoStack.push(entry);
-      let touched: Annotation;
+      let result: Annotation;
       if (entry.kind === "create") {
         drop(entry.after.id);
-        touched = entry.after;
+        result = entry.after;
       } else {
-        touched = entry.before;
+        result = entry.before;
         put(entry.before);
       }
       emit();
-      return touched;
+      return result;
     },
 
     redo(): Annotation | null {
       const entry = redoStack.pop();
       if (!entry) return null;
       undoStack.push(entry);
-      let touched: Annotation;
+      let result: Annotation;
       if (entry.kind === "delete") {
-        touched = entry.before;
+        result = entry.before;
         drop(entry.before.id);
       } else {
-        touched = entry.after;
+        result = entry.after;
         put(entry.after);
       }
       emit();
-      return touched;
+      return result;
     },
 
     flush,
