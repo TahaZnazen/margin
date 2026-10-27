@@ -99,8 +99,9 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     (id: string) => {
       const a = store.get(id);
       if (!a) return;
-      const top = a.target.segments[0].rects[0]?.[1] ?? 0;
-      viewer.current?.goToPage(a.pageStart, Math.max(0, top - 80));
+      const rect = a.target.segments[0].rects[0];
+      if (rect) viewer.current?.goToRect(a.pageStart, rect);
+      else viewer.current?.goToPage(a.pageStart);
       clearTimeout(flashTimer.current);
       setFlash(null);
       requestAnimationFrame(() => {

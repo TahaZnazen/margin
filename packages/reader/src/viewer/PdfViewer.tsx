@@ -5,6 +5,7 @@ import {
   buildQuote,
   HighlightTarget,
   mergeLineRects,
+  pageToViewport,
   type Rect,
 } from "@margin/annotation-model";
 import {
@@ -67,6 +68,8 @@ export type ShortcutName = "find" | "goto" | "theme" | "help";
 
 export interface PdfViewerHandle {
   goToPage: (page: number, offsetPt?: number) => void;
+  /** Scrolls so a rect (page points, unrotated) sits a little below the top, whatever the rotation. */
+  goToRect: (page: number, rect: Rect) => void;
   setZoom: (zoom: ZoomSpec) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -437,6 +440,20 @@ export function PdfViewer({
     [layout, scale, pageCount],
   );
 
+  const goToRect = useCallback(
+    (target: number, rect: Rect) => {
+      const g = geomOf(clamp(Math.round(target), 0, Math.max(pageCount - 1, 0)));
+      const top = pageToViewport(rect, {
+        pageWidth: g.width,
+        pageHeight: g.height,
+        rotation: g.rotation,
+        scale: 1,
+      })[1];
+      goToPage(target, Math.max(0, top - 80));
+    },
+    [geomOf, goToPage, pageCount],
+  );
+
   const chapters = useMemo(() => flattenOutline(outline), [outline]);
   const jumpChapter = useCallback(
     (dir: 1 | -1) => {
@@ -510,6 +527,7 @@ export function PdfViewer({
     ref,
     () => ({
       goToPage,
+      goToRect,
       setZoom: (z) => applyZoom(z),
       zoomIn: () => stepZoom(1),
       zoomOut: () => stepZoom(-1),
@@ -521,7 +539,7 @@ export function PdfViewer({
       prevChapter: () => jumpChapter(-1),
       focus: () => scroller.current?.focus(),
     }),
-    [goToPage, applyZoom, stepZoom, runFind, stepFind, jumpChapter],
+    [goToPage, goToRect, applyZoom, stepZoom, runFind, stepFind, jumpChapter],
   );
 
   // Keyboard.
