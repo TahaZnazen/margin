@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/copy-pdfjs-assets.mjs && next dev",
+    "build": "node scripts/copy-pdfjs-assets.mjs && next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "e2e": "playwright test",
@@ -16,6 +16,7 @@
     "lucide-react": "1.61.0",
     "@margin/annotation-model": "workspace:*",
     "@margin/db": "workspace:*",
+    "@margin/reader": "workspace:*",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "catalog:",
     "next": "16.4.3",
