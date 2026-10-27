@@ -15,8 +15,17 @@ const resolve = {
   ],
 };
 
+// `pnpm test:coverage`: the contract's pure logic must stay fully covered.
+const fullyCovered = ["packages/annotation-model/src/**/*.ts"];
+
 export default defineConfig({
   test: {
+    coverage: {
+      provider: "v8",
+      include: fullyCovered,
+      exclude: ["**/*.test.ts", "**/index.ts"],
+      thresholds: Object.fromEntries(fullyCovered.map((glob) => [glob, { 100: true }])),
+    },
     projects: [
       {
         resolve,

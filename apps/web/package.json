@@ -12,8 +12,10 @@
     "check:server-only": "node scripts/check-server-only.mjs"
   },
   "dependencies": {
+    "@margin/annotation-model": "workspace:*",
+    "@margin/db": "workspace:*",
     "@supabase/ssr": "0.12.7",
-    "@supabase/supabase-js": "2.118.0",
+    "@supabase/supabase-js": "catalog:",
     "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
