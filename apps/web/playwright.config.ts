@@ -9,6 +9,9 @@ export default defineConfig({
   testDir: "./e2e",
   outputDir: "./test-results",
   fullyParallel: true,
+  // Each reader test parses PDFs; one worker per core (28 here) starves them and times out.
+  workers: isCI ? 2 : 6,
+  expect: { timeout: 10_000 },
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   reporter: isCI
