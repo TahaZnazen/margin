@@ -1,10 +1,19 @@
 "use client";
 
 import "@margin/reader/viewer.css";
-import { PdfViewer, type ReaderError, type ReaderPosition, type ViewerState } from "@margin/reader";
+import "./annotations.css";
+import type { HighlightColor } from "@margin/annotation-model";
+import {
+  PdfViewer,
+  type PdfViewerHandle,
+  type ReaderError,
+  type ReaderPosition,
+  type ViewerState,
+} from "@margin/reader";
 import { Button } from "@margin/ui/components/button";
 import { Progress } from "@margin/ui/components/progress";
-import { ArrowLeftIcon } from "lucide-react";
+import { ThemeSwitch } from "@margin/ui/components/theme-switch";
+import { ArrowLeftIcon, BookmarkIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,6 +22,7 @@ import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { createSupabaseSettingsRepo } from "@/lib/settings/supabase-settings-repo";
 import { createClient } from "@/lib/supabase/client";
+import { useAnnotationLayer } from "./use-annotation-layer";
 
 const SAVE_DEBOUNCE_MS = 1000;
 const ACTIVE_WINDOW_MS = 30_000;
@@ -21,7 +31,14 @@ const SECONDS_FLUSH_EVERY = 15;
 type Phase =
   | { kind: "loading"; progress: number | null }
   | { kind: "error"; message: string }
-  | { kind: "ready"; book: Book; bytes: ArrayBuffer; initial: ReaderPosition; seconds: number };
+  | {
+      kind: "ready";
+      book: Book;
+      bytes: ArrayBuffer;
+      initial: ReaderPosition;
+      seconds: number;
+      labels: Partial<Record<HighlightColor, string>>;
+    };
 
 async function download(url: string, onProgress: (fraction: number | null) => void) {
   const res = await fetch(url);
@@ -83,7 +100,14 @@ export function ReaderClient() {
         offsetPt: saved?.offsetPt ?? 0,
         zoom: saved?.zoom ?? settings?.readerPrefs.defaultZoom ?? "fit-width",
       };
-      setPhase({ kind: "ready", book, bytes, initial, seconds: saved?.secondsRead ?? 0 });
+      setPhase({
+        kind: "ready",
+        book,
+        bytes,
+        initial,
+        seconds: saved?.secondsRead ?? 0,
+        labels: settings?.highlightLabels ?? {},
+      });
       void documents.update(documentId, { lastOpenedAt: new Date().toISOString() });
     })().catch((error: unknown) => {
       if (!cancelled) {
@@ -109,6 +133,7 @@ export function ReaderClient() {
         <h1 className="min-w-0 flex-1 truncate font-serif text-base" data-testid="book-title">
           {phase.kind === "ready" ? phase.book.title : ""}
         </h1>
+        <ThemeSwitch />
       </header>
       {phase.kind === "loading" ? (
         <div
@@ -132,6 +157,8 @@ export function ReaderClient() {
           bytes={phase.bytes}
           initial={phase.initial}
           initialSeconds={phase.seconds}
+          book={phase.book}
+          labels={phase.labels}
         />
       ) : null}
     </div>
@@ -143,7 +170,11 @@ function Reading({
   bytes,
   initial,
   initialSeconds,
+  book,
+  labels,
 }: {
+  book: Book;
+  labels: Partial<Record<HighlightColor, string>>;
   documentId: string;
   bytes: ArrayBuffer;
   initial: ReaderPosition;
@@ -152,6 +183,9 @@ function Reading({
   const [state, setState] = useState<ViewerState | null>(null);
   const [error, setError] = useState<ReaderError | null>(null);
   const [firstPageMs, setFirstPageMs] = useState<number | null>(null);
+  const viewer = useRef<PdfViewerHandle>(null);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const [railOpen, setRailOpen] = useState(false);
   const position = useRef<ReaderPosition | null>(null);
   const pageCount = useRef(0);
   const seconds = useRef(initialSeconds);
@@ -212,33 +246,97 @@ function Reading({
     };
   }, [flush, schedule]);
 
+  const layer = useAnnotationLayer({
+    documentId,
+    title: book.title,
+    sha256: book.sha256,
+    labels,
+    viewer,
+    wrapper,
+    page: state?.page ?? 0,
+    ready: (state?.pageCount ?? 0) > 0,
+  });
+
   const progress = state && state.pageCount > 1 ? (state.page / (state.pageCount - 1)) * 100 : 0;
 
   return (
     <>
-      <div className="relative min-h-0 flex-1">
-        <PdfViewer
-          source={bytes}
-          initialPosition={initial}
-          onPositionChange={(p) => {
-            position.current = p;
-            schedule();
-          }}
-          onStateChange={(s) => {
-            pageCount.current = s.pageCount;
-            setState(s);
-          }}
-          onFirstPage={setFirstPageMs}
-          onError={setError}
-        />
-        {state ? (
-          <output
-            className="absolute right-4 bottom-3 rounded-md bg-card/90 px-2 py-1 text-xs tabular-nums shadow"
-            data-testid="page-indicator"
+      <div className="relative flex min-h-0 flex-1">
+        {railOpen ? (
+          <nav
+            aria-label="Bookmarks"
+            data-testid="bookmarks-panel"
+            className="w-56 shrink-0 overflow-y-auto border-r p-2 text-sm"
           >
-            {state.page + 1} / {state.pageCount}
-          </output>
+            {layer.bookmarks.length === 0 ? (
+              <p className="p-2 text-muted-foreground">Press B to bookmark a page.</p>
+            ) : (
+              <ul>
+                {layer.bookmarks.map((b) => (
+                  <li key={b.id}>
+                    <button
+                      type="button"
+                      data-testid="bookmark-item"
+                      className="w-full rounded-md px-2 py-1.5 text-left hover:bg-accent/60"
+                      onClick={() => layer.jumpTo(b.id)}
+                    >
+                      Page {b.pageStart + 1}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </nav>
         ) : null}
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: clicks only select a highlight; keys are handled globally */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: wrapper for hit-testing highlights */}
+        <div className="relative min-w-0 flex-1" ref={wrapper} onClick={layer.onClick}>
+          <PdfViewer
+            ref={viewer}
+            renderPageOverlay={layer.renderPageOverlay}
+            onSelection={layer.onSelection}
+            source={bytes}
+            initialPosition={initial}
+            onPositionChange={(p) => {
+              position.current = p;
+              schedule();
+            }}
+            onStateChange={(s) => {
+              pageCount.current = s.pageCount;
+              setState(s);
+            }}
+            onFirstPage={setFirstPageMs}
+            onError={setError}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Bookmarks"
+            aria-pressed={railOpen}
+            data-testid="bookmarks-toggle"
+            className="absolute top-2 right-4 z-10 bg-card/90"
+            onClick={() => setRailOpen((open) => !open)}
+          >
+            <BookmarkIcon />
+          </Button>
+          {layer.snap.failing ? (
+            <output
+              className="absolute top-3 left-4 z-10 rounded-md bg-card px-2 py-1 text-destructive text-xs shadow ring-1 ring-destructive"
+              data-testid="not-saved"
+            >
+              Not saved yet. Retrying…
+            </output>
+          ) : null}
+          {state ? (
+            <output
+              className="absolute right-4 bottom-3 rounded-md bg-card/90 px-2 py-1 text-xs tabular-nums shadow"
+              data-testid="page-indicator"
+            >
+              {state.page + 1} / {state.pageCount}
+            </output>
+          ) : null}
+        </div>
+        {layer.popover}
       </div>
       <div className="h-0.5 shrink-0 bg-border" aria-hidden>
         <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
@@ -248,6 +346,7 @@ function Reading({
           {firstPageMs === null ? "" : firstPageMs.toFixed(1)}
         </output>
         <output data-testid="error-code">{error?.code ?? ""}</output>
+        <output data-testid="pending-writes">{layer.snap.pending}</output>
       </div>
     </>
   );

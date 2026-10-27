@@ -1,0 +1,84 @@
+/* Annotation layer (P09). Colors come from the P03 highlight tokens, so every theme is correct. */
+.mr-annot {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--annot-fill);
+  mix-blend-mode: var(--hl-blend, multiply);
+  box-shadow: inset 0 -2px 0 var(--annot-underline);
+}
+.mr-annot[data-color="key"] {
+  --annot-fill: var(--hl-key-fill);
+  --annot-underline: var(--hl-key-underline);
+}
+.mr-annot[data-color="definition"] {
+  --annot-fill: var(--hl-definition-fill);
+  --annot-underline: var(--hl-definition-underline);
+}
+.mr-annot[data-color="example"] {
+  --annot-fill: var(--hl-example-fill);
+  --annot-underline: var(--hl-example-underline);
+}
+.mr-annot[data-color="memorize"] {
+  --annot-fill: var(--hl-memorize-fill);
+  --annot-underline: var(--hl-memorize-underline);
+}
+.mr-annot[data-color="confusing"] {
+  --annot-fill: var(--hl-confusing-fill);
+  --annot-underline: var(--hl-confusing-underline);
+}
+.mr-annot[data-active="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.mr-annot[data-flash="true"] {
+  animation: mr-annot-flash 0.7s ease-in-out 2;
+}
+@keyframes mr-annot-flash {
+  0%,
+  100% {
+    outline: 0 solid var(--accent);
+  }
+  50% {
+    outline: 4px solid var(--accent);
+    outline-offset: 1px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mr-annot[data-flash="true"] {
+    animation: none;
+    outline: 3px solid var(--accent);
+  }
+}
+
+.mr-annot-note {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px 3px 3px 0;
+  background: var(--annot-note, var(--hl-key-chip));
+  box-shadow: 0 0 0 1px var(--background);
+}
+.mr-annot-note[data-color="key"] {
+  --annot-note: var(--hl-key-chip);
+}
+.mr-annot-note[data-color="definition"] {
+  --annot-note: var(--hl-definition-chip);
+}
+.mr-annot-note[data-color="example"] {
+  --annot-note: var(--hl-example-chip);
+}
+.mr-annot-note[data-color="memorize"] {
+  --annot-note: var(--hl-memorize-chip);
+}
+.mr-annot-note[data-color="confusing"] {
+  --annot-note: var(--hl-confusing-chip);
+}
+
+.mr-bookmark {
+  position: absolute;
+  top: 0;
+  width: 18px;
+  height: 34px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
