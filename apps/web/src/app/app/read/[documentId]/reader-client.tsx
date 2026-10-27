@@ -46,6 +46,10 @@ export function ReaderClient() {
 
   useEffect(() => {
     let cancelled = false;
+    // Next keeps the previous reader route alive (hidden) after "Back to library" and re-runs its
+    // effects when it is shown again. Drop the stale viewer so the reopen mounts a fresh one at
+    // the latest saved position, instead of re-opening the old viewer mid-layout.
+    setPhase((prev) => (prev.kind === "loading" ? prev : { kind: "loading", progress: null }));
     const { documents, readingState, storage } = services();
     (async () => {
       const [book, saved, settings] = await Promise.all([

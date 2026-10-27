@@ -161,7 +161,8 @@ test("rejects non-PDF, over-cap and corrupted files with clear messages", async 
   await input.setInputFiles(pdf("corrupted"));
   await expect(page.getByText(/looks corrupted/)).toBeVisible({ timeout: 20_000 });
 
-  expect(await rows()).toHaveLength(2);
+  // The placeholder row of the corrupted upload is dropped just after the message appears.
+  await expect.poll(async () => (await rows()).length).toBe(2);
 });
 
 test("reopen restores the position, and so does a second device", async ({
