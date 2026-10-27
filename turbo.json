@@ -4,11 +4,14 @@
   "globalPassThroughEnv": ["CI"],
   "tasks": {
     "build": {
+      "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "env": ["NEXT_PUBLIC_*"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
-    "typecheck": {},
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
     "dev": {
       "cache": false,
       "persistent": true,
