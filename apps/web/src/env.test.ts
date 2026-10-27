@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { publicEnv, serverEnv } from "./env";
+import { publicEnv, serverEnv, signupsAllowed } from "./env";
+
+describe("signupsAllowed", () => {
+  it("is false unless exactly 'true'", () => {
+    expect(signupsAllowed(undefined)).toBe(false);
+    expect(signupsAllowed("false")).toBe(false);
+    expect(signupsAllowed("1")).toBe(false);
+    expect(signupsAllowed("true")).toBe(true);
+  });
+});
 
 const URL_ = "https://example.supabase.co";
 const PUBLISHABLE = "sb_publishable_test";

@@ -1,0 +1,12 @@
+import { SettingsForm } from "./settings-form";
+
+export const metadata = { title: "Settings · Margin" };
+
+export default function SettingsPage() {
+  return (
+    <section className="max-w-xl space-y-6">
+      <h1 className="font-semibold font-serif text-2xl">Settings</h1>
+      <SettingsForm />
+    </section>
+  );
+}
