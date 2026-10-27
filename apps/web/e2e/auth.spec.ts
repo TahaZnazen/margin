@@ -65,10 +65,7 @@ test("sign in, shell, theme persists across reload, sign out", async ({ page }) 
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open the reader" })).toHaveAttribute(
-    "href",
-    "/dev/reader",
-  );
+  await expect(page.getByTestId("empty-state")).toBeVisible();
   await page.screenshot({ path: "../../evidence/p05/app.png" });
 
   await page.getByRole("button", { name: "Account menu" }).click();
