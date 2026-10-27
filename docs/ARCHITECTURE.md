@@ -296,7 +296,7 @@ If free-tier quotas or data terms become a problem during the beta, running it e
 |---|---|---|
 | 0001 | Annotations stored in PDF space + text quote (W3C-shaped) | Accepted |
 | 0002 | PowerSync + Supabase for local-first sync | Accepted |
-| 0003 | Reader engine: EmbedPDF vs PDF.js | Pending (WP-02 spike) |
+| 0003 | Reader engine: PDF.js (`pdfjs-dist`) behind `ReaderEngine`; EmbedPDF rejected | Accepted |
 | 0004 | Docling for structure; no AGPL dependencies | Accepted |
 | 0005 | AI providers: free tiers behind a feature-level router for the beta; Claude at launch, with the model per feature chosen by eval | Accepted for beta · launch models pending WP-37 |
 
