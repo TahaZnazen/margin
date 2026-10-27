@@ -25,6 +25,8 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: `pnpm start --port ${port}`,
+    // Tests expect the production default (sign-up hidden), whatever .env.local says.
+    env: { ...process.env, ALLOW_SIGNUPS: "false" },
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 120_000,
