@@ -36,11 +36,13 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@margin/fixtures": "workspace:*",
     "@playwright/test": "1.64.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "catalog:",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "pdfjs-dist": "6.4.299",
     "tailwindcss": "4.3.3",
     "typescript": "catalog:",
     "vitest": "catalog:"

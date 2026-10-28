@@ -9,42 +9,10 @@ import { BookMarkedIcon, NotebookPenIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DRAG_TYPE, NoteEditor, type QuoteHost } from "@/components/notes/note-editor";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
+import { groupByChapter } from "@/lib/annotations/chapters";
 import type { useNotebook } from "@/lib/notes/use-notebook";
 
 type Notebook = ReturnType<typeof useNotebook>;
-
-/** First page of an outline item, or of its first descendant that has one. */
-function startPage(item: OutlineItem): number | undefined {
-  if (item.page !== undefined) return item.page;
-  for (const child of item.children) {
-    const p = startPage(child);
-    if (p !== undefined) return p;
-  }
-  return undefined;
-}
-
-export interface Group {
-  title: string | null;
-  items: Annotation[];
-}
-
-/** Groups items (already in page order) by the top-level outline chapter they fall in. */
-export function groupByChapter(items: readonly Annotation[], outline: OutlineItem[]): Group[] {
-  const chapters = outline
-    .map((o) => ({ title: o.title, page: startPage(o) }))
-    .filter((c): c is { title: string; page: number } => c.page !== undefined)
-    .sort((a, b) => a.page - b.page);
-  if (chapters.length === 0) return items.length ? [{ title: null, items: [...items] }] : [];
-  const groups: Group[] = [];
-  for (const item of items) {
-    let title = "Before the first chapter";
-    for (const c of chapters) if (c.page <= item.pageStart) title = c.title;
-    const last = groups.at(-1);
-    if (last?.title === title) last.items.push(item);
-    else groups.push({ title, items: [item] });
-  }
-  return groups;
-}
 
 export function filterItems(
   items: readonly Annotation[],

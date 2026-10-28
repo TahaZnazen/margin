@@ -160,6 +160,12 @@ export function createAnnotationStore(
       return annotation;
     },
 
+    /** Bulk insert (an import): no undo entries, one render. */
+    createMany(list: readonly Annotation[]) {
+      for (const a of list) put(a);
+      emit();
+    },
+
     update(id: string, patch: Partial<Pick<Annotation, "color" | "comment">>, key?: string) {
       const before = items.get(id);
       if (!before) return;

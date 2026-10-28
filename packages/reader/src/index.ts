@@ -4,7 +4,18 @@
  */
 export * from "./engine";
 export { pdfJsEngine } from "./pdfjs-engine";
-export { buildPageText, findInText, normalizeForSearch, rangeBoxes, runRect } from "./text";
+export {
+  buildPageText,
+  canvasMeasure,
+  findInText,
+  type Measure,
+  normalizeForSearch,
+  pageTextFromContent,
+  type RawTextContent,
+  rangeBoxes,
+  runPartRect,
+  runRect,
+} from "./text";
 export { Outline, type OutlineProps } from "./viewer/Outline";
 export { currentChapter, flattenOutline } from "./viewer/outline-utils";
 export type { OverlayContext } from "./viewer/PageSlot";

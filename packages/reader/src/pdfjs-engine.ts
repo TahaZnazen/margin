@@ -16,10 +16,9 @@ import type {
   RenderOptions,
   Rotation,
   SearchHit,
-  TextRun,
 } from "./engine";
 import { ReaderError } from "./engine";
-import { buildPageText, findInText } from "./text";
+import { findInText, pageTextFromContent } from "./text";
 
 type PdfJs = typeof import("pdfjs-dist");
 type PDFDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
@@ -144,29 +143,7 @@ class PdfJsDocument implements ReaderDocument {
   async #loadText(index: number): Promise<PageText> {
     const page = await this.#page(index);
     const content = await page.getTextContent();
-    const [x0, , , y1] = page.view as number[];
-    const runs: Omit<TextRun, "start">[] = [];
-    for (const item of content.items) {
-      if (!("str" in item)) continue; // marked-content markers
-      const [a = 1, b = 0, c = 0, d = 1, e = 0, f = 0] = item.transform as number[];
-      const style = content.styles[item.fontName];
-      const fontSize = Math.hypot(c, d) || Math.hypot(a, b);
-      if (item.str === "" && !item.hasEOL) continue;
-      runs.push({
-        str: item.str,
-        x: e - (x0 as number),
-        y: (y1 as number) - f,
-        width: item.width,
-        fontSize,
-        ascent: style?.ascent ?? 0.8,
-        descent: Math.abs(style?.descent ?? -0.2),
-        angle: (Math.atan2(b, a) * 180) / Math.PI,
-        fontFamily: style?.fontFamily ?? "sans-serif",
-        dir: item.dir === "rtl" ? "rtl" : "ltr",
-        hasEOL: item.hasEOL,
-      });
-    }
-    return buildPageText(runs);
+    return pageTextFromContent(content, page.view as number[]);
   }
 
   async *search(query: string, signal?: AbortSignal): AsyncIterable<SearchHit> {

@@ -7,16 +7,23 @@ import {
   type OutlineItem,
   PdfViewer,
   type PdfViewerHandle,
+  type ReaderDocument,
   type ReaderError,
   type ReaderPosition,
   type ViewerState,
 } from "@margin/reader";
 import { Button } from "@margin/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@margin/ui/components/dropdown-menu";
 import { Progress } from "@margin/ui/components/progress";
 import { Sheet, SheetContent, SheetTitle } from "@margin/ui/components/sheet";
 import { toast } from "@margin/ui/components/sonner";
 import { ThemeSwitch } from "@margin/ui/components/theme-switch";
-import { ArrowLeftIcon, BookmarkIcon, PanelRightIcon } from "lucide-react";
+import { ArrowLeftIcon, BookmarkIcon, DownloadIcon, PanelRightIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,11 +31,13 @@ import type { QuoteHost } from "@/components/notes/note-editor";
 import type { Book, ReadingState } from "@/lib/documents/documents-repo";
 import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
+import { exportBookMarkdown, exportBookPdf } from "@/lib/export/client";
 import { useNotebook } from "@/lib/notes/use-notebook";
 import { createSupabaseSettingsRepo } from "@/lib/settings/supabase-settings-repo";
 import { createClient } from "@/lib/supabase/client";
 import { SidePanel } from "./side-panel";
 import { useAnnotationLayer } from "./use-annotation-layer";
+import { useImportExisting } from "./use-import";
 
 const SAVE_DEBOUNCE_MS = 1000;
 const ACTIVE_WINDOW_MS = 30_000;
@@ -209,6 +218,7 @@ function Reading({
   const [tab, setTab] = useState("annotations");
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [outline, setOutline] = useState<OutlineItem[]>([]);
+  const [doc, setDoc] = useState<ReaderDocument | null>(null);
   const narrow = useNarrow();
   const notebook = useNotebook(documentId);
   const position = useRef<ReaderPosition | null>(null);
@@ -284,6 +294,7 @@ function Reading({
     hoverId,
   });
   const { store, jumpTo } = layer;
+  useImportExisting({ book, bytes, doc, store, loaded: layer.snap.loaded });
 
   const labelMap = useMemo(
     () => ({ ...DEFAULT_HIGHLIGHT_LABELS, ...labels }) as Record<HighlightColor, string>,
@@ -404,9 +415,51 @@ function Reading({
               setState(s);
             }}
             onFirstPage={setFirstPageMs}
-            onDocumentLoad={(_doc, items) => setOutline(items)}
+            onDocumentLoad={(d, items) => {
+              setDoc(d);
+              setOutline(items);
+            }}
             onError={setError}
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Export"
+                data-testid="export-menu"
+                className="absolute top-2 right-24 z-10 bg-card/90"
+              >
+                <DownloadIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                data-testid="export-markdown"
+                onSelect={() =>
+                  void exportBookMarkdown(documentId, outline)
+                    .then(() => toast.success("Markdown exported"))
+                    .catch((e: unknown) =>
+                      toast.error(e instanceof Error ? e.message : "Export failed"),
+                    )
+                }
+              >
+                Export notes as Markdown
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="export-pdf"
+                onSelect={() =>
+                  void exportBookPdf(documentId, bytes)
+                    .then(() => toast.success("Annotated PDF exported"))
+                    .catch((e: unknown) =>
+                      toast.error(e instanceof Error ? e.message : "Export failed"),
+                    )
+                }
+              >
+                Export annotated PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="ghost"
             size="icon"
