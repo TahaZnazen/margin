@@ -63,6 +63,23 @@ export function quoteIdsOf(node: JsonNode): Set<string> {
   return ids;
 }
 
+/** Points quote nodes at other annotations (`from id -> to id`); returns the same doc if none match. */
+export function rewriteQuoteIds(doc: JsonNode, map: ReadonlyMap<string, string>): JsonNode {
+  const walk = (n: JsonNode): JsonNode => {
+    let next = n;
+    if (n.type === "annotationQuote") {
+      const to = map.get(String(n.attrs?.annotationId));
+      if (to) next = { ...n, attrs: { ...n.attrs, annotationId: to } };
+    }
+    if (n.content) {
+      const content = n.content.map(walk);
+      if (content.some((child, i) => child !== n.content?.[i])) next = { ...next, content };
+    }
+    return next;
+  };
+  return walk(doc);
+}
+
 export const quoteNode = (attrs: QuoteAttrs): JsonNode => ({
   type: "annotationQuote",
   attrs: { ...attrs },

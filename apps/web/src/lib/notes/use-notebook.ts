@@ -13,6 +13,7 @@ import {
   type QuoteAttrs,
   quoteIdsOf,
   quoteNode,
+  rewriteQuoteIds,
 } from "./doc";
 import type { Note, NotesRepo } from "./notes-repo";
 
@@ -162,6 +163,26 @@ export function useNotebook(documentId: string) {
     [onChange, flush],
   );
 
+  /** Highlights were merged: quotes of the removed ones now point at the survivor. */
+  const repoint = useCallback(
+    (map: ReadonlyMap<string, string>) => {
+      if (map.size === 0) return;
+      const live = editor.current;
+      if (live && !live.isDestroyed) {
+        const { tr } = live.state;
+        live.state.doc.descendants((node, pos) => {
+          const to = node.type.name === "annotationQuote" ? map.get(node.attrs.annotationId) : null;
+          if (to) tr.setNodeMarkup(pos, undefined, { ...node.attrs, annotationId: to });
+        });
+        if (tr.docChanged) live.view.dispatch(tr);
+      } else {
+        const next = rewriteQuoteIds(docRef.current, map);
+        if (next !== docRef.current) onChange(next);
+      }
+    },
+    [onChange],
+  );
+
   const referenced = useMemo(() => quoteIdsOf(doc), [doc]);
 
   return {
@@ -170,6 +191,7 @@ export function useNotebook(documentId: string) {
     onChange,
     setEditor,
     addQuote,
+    repoint,
     referenced,
     pending: saver.pending,
     failing: saver.failing,

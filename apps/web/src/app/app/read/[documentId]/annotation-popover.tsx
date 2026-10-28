@@ -141,13 +141,14 @@ export function AnnotationPopover(props: PopoverProps) {
         {mode === "edit" ? (
           <button
             type="button"
-            title="Delete (Del)"
+            title="Delete highlight (Del)"
             aria-label="Delete highlight"
             data-testid="popover-delete"
-            className={BTN}
+            className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-destructive text-xs hover:bg-destructive/10 pointer-coarse:h-11"
             onClick={props.onDelete}
           >
             <Trash2Icon className="size-4" />
+            Delete
           </button>
         ) : null}
         {/* Reserved slots (docs/design/reader-layout.md): they keep their place, hidden until the flag. */}

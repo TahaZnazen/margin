@@ -20,6 +20,7 @@ export interface AnnotationSnapshot {
 type Entry =
   | { kind: "create"; after: Annotation }
   | { kind: "delete"; before: Annotation }
+  | { kind: "merge"; before: Annotation[]; after: Annotation }
   | { kind: "update"; before: Annotation; after: Annotation; key?: string; at: number };
 
 export interface StoreOptions {
@@ -197,6 +198,19 @@ export function createAnnotationStore(
       emit();
     },
 
+    /**
+     * Replaces several highlights by one: `merged` keeps the id of the first of `originals`
+     * (the survivor); the others are removed. One undo step restores all of them.
+     */
+    merge(merged: Annotation, originals: readonly Annotation[]) {
+      const before = originals.filter((a) => items.has(a.id));
+      if (before.length === 0 || !items.has(merged.id)) return;
+      for (const a of before) if (a.id !== merged.id) drop(a.id);
+      put(merged);
+      push({ kind: "merge", before: [...before], after: merged });
+      emit();
+    },
+
     undo(): Annotation | null {
       const entry = undoStack.pop();
       if (!entry) return null;
@@ -204,6 +218,9 @@ export function createAnnotationStore(
       let result: Annotation;
       if (entry.kind === "create") {
         drop(entry.after.id);
+        result = entry.after;
+      } else if (entry.kind === "merge") {
+        for (const a of entry.before) put(a);
         result = entry.after;
       } else {
         result = entry.before;
@@ -221,6 +238,10 @@ export function createAnnotationStore(
       if (entry.kind === "delete") {
         result = entry.before;
         drop(entry.before.id);
+      } else if (entry.kind === "merge") {
+        for (const a of entry.before) if (a.id !== entry.after.id) drop(a.id);
+        result = entry.after;
+        put(entry.after);
       } else {
         result = entry.after;
         put(entry.after);

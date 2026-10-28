@@ -5,7 +5,7 @@ import type { OutlineItem } from "@margin/reader";
 import { Input } from "@margin/ui/components/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@margin/ui/components/tabs";
 import { cn } from "@margin/ui/lib/utils";
-import { BookMarkedIcon, NotebookPenIcon } from "lucide-react";
+import { BookMarkedIcon, NotebookPenIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DRAG_TYPE, NoteEditor, type QuoteHost } from "@/components/notes/note-editor";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
@@ -35,6 +35,7 @@ function Item({
   onJump,
   onHover,
   onAdd,
+  onDelete,
 }: {
   a: Annotation;
   labels: Record<HighlightColor, string>;
@@ -43,6 +44,7 @@ function Item({
   onJump(id: string): void;
   onHover(id: string | null): void;
   onAdd(id: string): void;
+  onDelete(id: string): void;
 }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: a card with nested buttons cannot be a <button>
@@ -106,6 +108,19 @@ function Item({
         >
           Add to notebook
         </button>
+        <button
+          type="button"
+          data-testid="annot-delete"
+          title="Delete highlight"
+          aria-label="Delete highlight"
+          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(a.id);
+          }}
+        >
+          <Trash2Icon className="size-3.5" />
+        </button>
       </div>
     </div>
   );
@@ -122,10 +137,12 @@ export interface SidePanelProps {
   onJump(id: string): void;
   onHover(id: string | null): void;
   onAdd(id: string): void;
+  onDelete(id: string): void;
 }
 
 export function SidePanel(props: SidePanelProps) {
-  const { items, outline, labels, notebook, host, tab, onTab, onJump, onHover, onAdd } = props;
+  const { items, outline, labels, notebook, host, tab, onTab, onJump, onHover, onAdd, onDelete } =
+    props;
   const [colors, setColors] = useState<ReadonlySet<HighlightColor>>(new Set());
   const [query, setQuery] = useState("");
 
@@ -223,6 +240,7 @@ export function SidePanel(props: SidePanelProps) {
                     onJump={onJump}
                     onHover={onHover}
                     onAdd={onAdd}
+                    onDelete={onDelete}
                   />
                 ))}
               </div>

@@ -75,7 +75,7 @@ export function viewportToPage(rect: Rect, view: PageView): Rect {
  */
 const MAX_GAP_IN_LINE_HEIGHTS = 1.5;
 
-function onSameLine(line: Rect, box: Rect): boolean {
+export function onSameLine(line: Rect, box: Rect): boolean {
   const lineHeight = line[3] - line[1];
   const boxHeight = box[3] - box[1];
   const overlap = Math.min(line[3], box[3]) - Math.max(line[1], box[1]);

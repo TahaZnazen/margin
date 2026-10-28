@@ -79,6 +79,10 @@ function fillTextLayer(layer: HTMLElement, page: PageText, pageIndex: number) {
     frag.append(span);
     if (run.hasEOL) frag.append(document.createElement("br"));
   });
+  const end = document.createElement("div");
+  end.className = "mr-end";
+  end.setAttribute("aria-hidden", "true");
+  frag.append(end);
   layer.replaceChildren(frag);
 }
 
