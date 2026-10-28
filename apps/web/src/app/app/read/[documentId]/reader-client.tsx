@@ -4,6 +4,7 @@ import "@margin/reader/viewer.css";
 import "./annotations.css";
 import { DEFAULT_HIGHLIGHT_LABELS, type HighlightColor } from "@margin/annotation-model";
 import {
+  deriveOutline,
   type OutlineItem,
   PdfViewer,
   type PdfViewerHandle,
@@ -24,7 +25,14 @@ import { Progress } from "@margin/ui/components/progress";
 import { Sheet, SheetContent, SheetTitle } from "@margin/ui/components/sheet";
 import { toast } from "@margin/ui/components/sonner";
 import { ThemeSwitch } from "@margin/ui/components/theme-switch";
-import { ArrowLeftIcon, BookmarkIcon, DownloadIcon, PanelRightIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BookmarkIcon,
+  DownloadIcon,
+  PanelLeftIcon,
+  PanelRightIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,6 +43,15 @@ import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { exportBookMarkdown, exportBookPdf } from "@/lib/export/client";
 import { useNotebook } from "@/lib/notes/use-notebook";
+import {
+  chapterIndexAt,
+  chapterLevel,
+  chapterProgress,
+  flatChapters,
+  nextChapterAtEnd,
+  pageFromHash,
+} from "@/lib/reader/chapters";
+import { ReaderSidebar, SIDEBAR_TABS, type SidebarTab } from "./reader-sidebar";
 import { SidePanel } from "./side-panel";
 import { useAnnotationLayer } from "./use-annotation-layer";
 import { useImportExisting } from "./use-import";
@@ -110,9 +127,11 @@ export function ReaderClient() {
       if (cancelled) return;
       // A #a=<annotation> deep link wins over the resume position (the jump would otherwise race it).
       const deepLinked = /[#&]a=/.test(window.location.hash);
+      // So does a #p=<page> link (1-based, as in the page indicator).
+      const linkedPage = pageFromHash(window.location.hash);
       const initial: ReaderPosition = {
-        page: deepLinked ? 0 : (saved?.page ?? 0),
-        offsetPt: deepLinked ? 0 : (saved?.offsetPt ?? 0),
+        page: linkedPage !== null ? linkedPage : deepLinked ? 0 : (saved?.page ?? 0),
+        offsetPt: deepLinked || linkedPage !== null ? 0 : (saved?.offsetPt ?? 0),
         zoom: saved?.zoom ?? settings?.readerPrefs.defaultZoom ?? "fit-width",
       };
       setPhase({
@@ -139,18 +158,7 @@ export function ReaderClient() {
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-background" data-testid="reader-route">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-        <Button asChild variant="ghost" size="icon" aria-label="Back to library">
-          <Link href="/app">
-            <ArrowLeftIcon />
-          </Link>
-        </Button>
-        <h1 className="min-w-0 flex-1 truncate font-serif text-base" data-testid="book-title">
-          {phase.kind === "ready" ? phase.book.title : ""}
-        </h1>
-        <SyncStatus />
-        <ThemeSwitch />
-      </header>
+      {phase.kind !== "ready" ? <ReaderHeader title="" /> : null}
       {phase.kind === "loading" ? (
         <div
           className="flex flex-1 flex-col items-center justify-center gap-3"
@@ -179,6 +187,90 @@ export function ReaderClient() {
       ) : null}
     </div>
   );
+}
+
+function ReaderHeader({
+  title,
+  chapter,
+  chapterProgress,
+  sidebarOpen,
+  onToggleSidebar,
+}: {
+  title: string;
+  chapter?: string;
+  chapterProgress?: number;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+}) {
+  return (
+    <header className="relative flex h-12 shrink-0 items-center gap-1 border-b px-2 sm:gap-2 sm:px-3">
+      <Button asChild variant="ghost" size="icon" aria-label="Back to library">
+        <Link href="/app">
+          <ArrowLeftIcon />
+        </Link>
+      </Button>
+      {onToggleSidebar ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Contents"
+          title="Contents (O)"
+          aria-pressed={sidebarOpen}
+          data-testid="sidebar-toggle"
+          onClick={onToggleSidebar}
+        >
+          <PanelLeftIcon />
+        </Button>
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate font-serif text-base leading-tight" data-testid="book-title">
+          {title}
+        </h1>
+        {chapter ? (
+          <p
+            className="truncate text-muted-foreground text-xs leading-tight"
+            data-testid="chapter-title"
+          >
+            {chapter}
+          </p>
+        ) : null}
+      </div>
+      <SyncStatus />
+      <ThemeSwitch />
+      {chapter && chapterProgress !== undefined ? (
+        <div
+          role="progressbar"
+          aria-label="Progress in this chapter"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(chapterProgress * 100)}
+          data-testid="chapter-progress"
+          className="absolute inset-x-0 bottom-0 h-0.5"
+        >
+          <div
+            className="h-full bg-primary/70 transition-[width]"
+            style={{ width: `${chapterProgress * 100}%` }}
+          />
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+const SIDEBAR_KEY = "margin.reader.sidebar";
+const derivedCache = new Map<string, OutlineItem[]>();
+
+function readSidebarPrefs(): { open: boolean; tab: SidebarTab } {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SIDEBAR_KEY) ?? "{}") as {
+      open?: unknown;
+      tab?: unknown;
+    };
+    const tab = SIDEBAR_TABS.find((t) => t === raw.tab) ?? "chapters";
+    return { open: raw.open === true, tab };
+  } catch {
+    return { open: false, tab: "chapters" };
+  }
 }
 
 /** Below 768 px the right panel is a bottom sheet (docs/design/reader-layout.md). */
@@ -214,7 +306,12 @@ function Reading({
   const [firstPageMs, setFirstPageMs] = useState<number | null>(null);
   const viewer = useRef<PdfViewerHandle>(null);
   const wrapper = useRef<HTMLDivElement>(null);
-  const [railOpen, setRailOpen] = useState(false);
+  const [sidebarPrefs, setSidebarPrefs] = useState(readSidebarPrefs);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [derived, setDerived] = useState<OutlineItem[] | null>(
+    () => derivedCache.get(documentId) ?? null,
+  );
+  const [scanning, setScanning] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [tab, setTab] = useState("annotations");
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -299,6 +396,77 @@ function Reading({
   const { store, jumpTo } = layer;
   useImportExisting({ book, bytes, doc, store, loaded: layer.snap.loaded });
 
+  // PDFs without an outline: look for large-font headings, lazily, once per document.
+  const hasOutline = outline.length > 0;
+  useEffect(() => {
+    if (!doc || hasOutline || derived !== null) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setScanning(true);
+      deriveOutline(doc, { signal: controller.signal })
+        .then((items) => {
+          if (controller.signal.aborted) return;
+          derivedCache.set(documentId, items);
+          setDerived(items);
+        })
+        .catch(() => !controller.signal.aborted && setDerived([]))
+        .finally(() => !controller.signal.aborted && setScanning(false));
+    }, 1200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      setScanning(false);
+    };
+  }, [doc, hasOutline, derived, documentId]);
+  const chapterSource = useMemo(
+    () => (hasOutline ? outline : (derived ?? [])),
+    [hasOutline, outline, derived],
+  );
+  const allChapters = useMemo(() => flatChapters(chapterSource), [chapterSource]);
+  const chapters = useMemo(() => chapterLevel(allChapters), [allChapters]);
+  const page = state?.page ?? 0;
+  const pageTotal = state?.pageCount ?? 0;
+  const chapterIdx = chapterIndexAt(chapters, page);
+  const chapter = chapters[chapterIdx];
+  const chapterFraction = chapterProgress(chapters, chapterIdx, page, pageTotal);
+  const upNext = nextChapterAtEnd(chapters, chapterIdx, page);
+
+  const sidebarOpen = narrow ? sheetOpen : sidebarPrefs.open;
+  const setSidebarOpen = useCallback(
+    (open: boolean) => {
+      if (narrow) setSheetOpen(open);
+      else setSidebarPrefs((p) => ({ ...p, open }));
+    },
+    [narrow],
+  );
+  const setSidebarTab = useCallback(
+    (tab: SidebarTab) => setSidebarPrefs((p) => ({ ...p, tab })),
+    [],
+  );
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, JSON.stringify(sidebarPrefs));
+    } catch {
+      // Private mode or blocked storage: the sidebar just starts closed next time.
+    }
+  }, [sidebarPrefs]);
+  const goTo = useCallback(
+    (target: number, offsetPt?: number) => {
+      viewer.current?.goToPage(target, offsetPt ?? 0);
+      if (narrow) setSheetOpen(false);
+    },
+    [narrow],
+  );
+  // #p=<page> while the book is open (a pasted chapter link, or editing the address bar).
+  useEffect(() => {
+    const onHash = () => {
+      const target = pageFromHash(window.location.hash, pageCount.current || undefined);
+      if (target !== null) goTo(target);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [goTo]);
+
   const labelMap = useMemo(
     () => ({ ...DEFAULT_HIGHLIGHT_LABELS, ...labels }) as Record<HighlightColor, string>,
     [labels],
@@ -338,22 +506,43 @@ function Reading({
     [host, notebook],
   );
 
-  // "P" toggles the right panel. The design doc says "]", but the viewer already uses [ and ] for
-  // the previous and next chapter (P07), so the panel gets its own key.
+  // "P" toggles the right panel and "O" the contents sidebar. The design doc says "]" and "[", but
+  // the viewer already uses those for the next and previous chapter (P07).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key !== "p" && e.key !== "P") || e.ctrlKey || e.metaKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if ((key !== "p" && key !== "o") || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target;
       if (
         t instanceof HTMLElement &&
         (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
       )
         return;
-      setPanelOpen((o) => !o);
+      if (key === "p") setPanelOpen((o) => !o);
+      else setSidebarOpen(!sidebarOpen);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [sidebarOpen, setSidebarOpen]);
+
+  const sidebar = (
+    <ReaderSidebar
+      documentId={documentId}
+      tab={sidebarPrefs.tab}
+      onTab={setSidebarTab}
+      outline={chapterSource}
+      detected={!hasOutline && chapterSource.length > 0}
+      scanning={scanning || (!hasOutline && derived === null)}
+      doc={doc}
+      page={page}
+      bookmarks={layer.bookmarks}
+      onGoTo={goTo}
+      onBookmark={(id) => {
+        if (narrow) setSheetOpen(false);
+        layer.jumpTo(id);
+      }}
+    />
+  );
 
   const panel = (
     <SidePanel
@@ -378,32 +567,22 @@ function Reading({
 
   return (
     <>
+      <ReaderHeader
+        title={book.title}
+        chapter={chapter?.title}
+        chapterProgress={chapter ? chapterFraction : undefined}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+      />
       <div className="relative flex min-h-0 flex-1">
-        {railOpen ? (
-          <nav
-            aria-label="Bookmarks"
-            data-testid="bookmarks-panel"
-            className="w-56 shrink-0 overflow-y-auto border-r p-2 text-sm"
+        {!narrow && sidebarOpen ? (
+          <aside
+            aria-label="Contents"
+            data-testid="reader-rail"
+            className="flex w-72 shrink-0 flex-col border-r bg-background"
           >
-            {layer.bookmarks.length === 0 ? (
-              <p className="p-2 text-muted-foreground">Press B to bookmark a page.</p>
-            ) : (
-              <ul>
-                {layer.bookmarks.map((b) => (
-                  <li key={b.id}>
-                    <button
-                      type="button"
-                      data-testid="bookmark-item"
-                      className="w-full rounded-md px-2 py-1.5 text-left hover:bg-accent/60"
-                      onClick={() => layer.jumpTo(b.id)}
-                    >
-                      Page {b.pageStart + 1}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </nav>
+            {sidebar}
+          </aside>
         ) : null}
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: clicks only select a highlight; keys are handled globally */}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: wrapper for hit-testing highlights */}
@@ -483,10 +662,16 @@ function Reading({
             variant="ghost"
             size="icon"
             aria-label="Bookmarks"
-            aria-pressed={railOpen}
+            aria-pressed={sidebarOpen && sidebarPrefs.tab === "bookmarks"}
             data-testid="bookmarks-toggle"
             className="absolute top-2 right-4 z-10 bg-card/90"
-            onClick={() => setRailOpen((open) => !open)}
+            onClick={() => {
+              if (sidebarOpen && sidebarPrefs.tab === "bookmarks") setSidebarOpen(false);
+              else {
+                setSidebarTab("bookmarks");
+                setSidebarOpen(true);
+              }
+            }}
           >
             <BookmarkIcon />
           </Button>
@@ -497,6 +682,18 @@ function Reading({
             >
               Not saved yet. Retrying…
             </output>
+          ) : null}
+          {upNext ? (
+            <button
+              type="button"
+              data-testid="next-chapter"
+              title="Next chapter (])"
+              className="absolute bottom-3 left-1/2 z-10 flex min-h-9 max-w-[calc(100%-9rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border bg-card/95 px-3 py-1 text-muted-foreground text-xs shadow-md hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => goTo(upNext.page, upNext.offsetPt)}
+            >
+              <span className="truncate">Next chapter: {upNext.title}</span>
+              <ArrowRightIcon className="size-3.5 shrink-0" />
+            </button>
           ) : null}
           {state ? (
             <output
@@ -515,6 +712,20 @@ function Reading({
           >
             {panel}
           </aside>
+        ) : null}
+        {narrow ? (
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetContent
+              side="left"
+              data-testid="reader-sheet"
+              className="w-[85%] max-w-80 gap-0 p-0 data-[side=left]:sm:max-w-80"
+            >
+              <SheetTitle className="flex h-12 shrink-0 items-center px-4 font-serif text-base">
+                Contents
+              </SheetTitle>
+              <div className="min-h-0 flex-1">{sidebar}</div>
+            </SheetContent>
+          </Sheet>
         ) : null}
         {narrow ? (
           <Sheet open={panelOpen} onOpenChange={setPanelOpen}>

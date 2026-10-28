@@ -54,6 +54,11 @@ function Thumb({ doc, index, width, current, onSelect }: ThumbProps) {
     return () => observer.disconnect();
   }, []);
 
+  // Keep the current page in view as the book scrolls.
+  useEffect(() => {
+    if (current) item.current?.scrollIntoView({ block: "nearest" });
+  }, [current]);
+
   useEffect(() => {
     if (!visible) return;
     const controller = new AbortController();

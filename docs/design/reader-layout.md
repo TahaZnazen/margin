@@ -17,7 +17,8 @@ Direction: **Calm paper**. The page is the hero; chrome is quiet, warm and neutr
 ```
 
 - **Top bar** (3rem): back to library, book title (serif, truncated), `page n / N` (tabular numerals, click to jump), zoom (- / % / +, fit width / fit page), theme switch (system, light, sepia, dark), toggles for left rail and right panel, overflow menu. It fades out (`--duration-chrome`, 480 ms) after 2.5 s without pointer or key activity while reading, and returns on pointer movement to the top edge, on any mouse move after a pause, on `Esc`, or when a popover or menu is open. It never covers the page: the canvas starts under it only while it is visible; hiding it does not shift the page.
-- **Left rail** (16rem, collapsible, `[`): tabs Outline / Thumbnails / Bookmarks. Current section highlighted. Thumbnails lazy-render.
+- **Left sidebar** (18rem, collapsible with the header button or `O`; a sheet below 768 px): tabs **Chapters** / **Pages** / **Bookmarks**, like an ebook. Chapters: the PDF outline, nested, the current entry highlighted and kept in view while the book scrolls, a click jumps, each row has Copy link (`<origin>/app/read/<id>#p=<page>`). A PDF without an outline gets headings detected from large-font text (first 400 pages, lazily, cached per document); with none it says "This PDF has no table of contents" and points to Pages. Pages: lazy thumbnails at the page aspect ratio, the current page marked. Open/closed and the active tab are remembered in localStorage (`margin.reader.sidebar`).
+- **Header** shows the book title with the current chapter under it and a 2 px progress line for that chapter along the header bottom. On the last page of a chapter of two or more pages a subtle pill "Next chapter: <title>" appears at the bottom of the page (the same as `]`).
 - **Right panel** (22rem, collapsible, `]`): tabs Annotations (list by page, filter by the 5 colors) and Notebook (notes). Clicking an item scrolls to and flashes the exact passage.
 - **Canvas**: page centered on `--page-bg`, soft `--shadow-md`. Dark theme dims the page (`--page-filter: brightness(0.8)`); an option inverts it (`invert(0.9) hue-rotate(180deg)`). Highlight fills use `mix-blend-mode: var(--hl-blend)`.
 - **Bottom progress line**: 2 px, accent on `--border`, shows position through the book; hover shows `page n / N` and chapter; click seeks. Always visible, even when the top bar is hidden.
@@ -48,7 +49,8 @@ Order: **5 color dots** (key, definition, example, memorize, confusing; chips fr
 | `G` | Go to page |
 | `+` / `-` / `0` | Zoom in / out / fit width |
 | `T` | Cycle theme (light, sepia, dark) |
-| `[` / `]` | Toggle left rail / right panel |
+| `[` / `]` | Previous / next outline entry (chapter) |
+| `O` / `P` | Toggle the contents sidebar / the annotations panel |
 | `Esc` | Close popover or dialog, then show the top bar, then clear selection |
 | `1`-`5` | With a selection: apply the color (key, definition, example, memorize, confusing) |
 | `N` | With a selection: add a note (also on a focused highlight) |
@@ -66,6 +68,8 @@ Single-key shortcuts are off while a text field has focus. Every shortcut also a
 - Focus ring is `--focus-ring`, 2 px offset; all chrome is reachable by Tab in reading order (top bar, rail, page, panel).
 - Chrome text meets 4.5:1 in all three themes; highlights meet it per `palette.md`.
 - Motion uses the duration and easing tokens and collapses to 0 ms under `prefers-reduced-motion`.
+
+Deep links: `#a=<annotationId>` opens at a highlight, `#p=<page>` (1-based, as in the page indicator) opens at a page; both also work while the book is open (hash change).
 
 ## Follow-up
 
