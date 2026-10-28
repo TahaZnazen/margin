@@ -164,7 +164,9 @@ test("import on upload, Markdown and annotated PDF export, round trip through th
   copyFileSync(exportedPdf, join(EVIDENCE, "annotated-copy.pdf"));
 
   await page.goto("/app");
-  await page.waitForLoadState("networkidle"); // hydrated: the input handler is attached
+  // Hydrated (the input handler is attached) once the client-only sync indicator has mounted.
+  // (networkidle never comes: the sync stream stays open.)
+  await expect(page.getByTestId("sync-status")).toBeVisible();
   await page.getByTestId("upload-input").setInputFiles(exportedPdf);
   await expect(page).toHaveURL(/\/app\/read\/[0-9a-f-]{36}$/);
   expect(page.url()).not.toBe(bookUrl);

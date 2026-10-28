@@ -5,6 +5,10 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
     .string({ error: "is required" })
     .startsWith("sb_publishable_", "must be a publishable key (sb_publishable_…)"),
+  // Optional here so the health check and unit tests need no PowerSync; the app shell uses powersyncUrl().
+  NEXT_PUBLIC_POWERSYNC_URL: z
+    .url({ protocol: /^https?$/, error: "must be the PowerSync instance URL" })
+    .optional(),
 });
 
 const serverSchema = publicSchema.extend({
@@ -39,6 +43,7 @@ function readPublicVars() {
   return {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_POWERSYNC_URL: process.env.NEXT_PUBLIC_POWERSYNC_URL,
   };
 }
 
@@ -48,6 +53,13 @@ function readPublicVars() {
  */
 export function publicEnv(): PublicEnv {
   return parse(publicSchema, readPublicVars());
+}
+
+/** The PowerSync instance URL; throws a clear error when it is not set. */
+export function powersyncUrl(): string {
+  const url = publicEnv().NEXT_PUBLIC_POWERSYNC_URL;
+  if (!url) throw new Error("NEXT_PUBLIC_POWERSYNC_URL is required (see apps/web/.env.example).");
+  return url;
 }
 
 /**

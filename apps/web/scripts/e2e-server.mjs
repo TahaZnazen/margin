@@ -18,6 +18,7 @@ const run = (args) => {
   if (result.status !== 0) process.exit(result.status ?? 1);
 };
 run([fileURLToPath(new URL("./copy-pdfjs-assets.mjs", import.meta.url))]);
+run([fileURLToPath(new URL("./copy-powersync-assets.mjs", import.meta.url))]);
 run([nextBin, "build"]);
 
 const server = spawn(process.execPath, [nextBin, "start", "--port", port], {

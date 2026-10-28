@@ -8,12 +8,11 @@ import { ThemeSwitch } from "@margin/ui/components/theme-switch";
 import { ToggleGroup, ToggleGroupItem } from "@margin/ui/components/toggle-group";
 import { useTheme } from "@margin/ui/theme";
 import { useEffect, useRef, useState } from "react";
+import { services } from "@/lib/documents/services";
 import type { Settings } from "@/lib/settings/settings-repo";
-import { createSupabaseSettingsRepo } from "@/lib/settings/supabase-settings-repo";
-import { createClient } from "@/lib/supabase/client";
 
 // Created on use, never during render: the browser client must not start a session on the server.
-const getRepo = () => createSupabaseSettingsRepo(createClient());
+const getRepo = () => services().settings;
 
 export function SettingsForm() {
   const { preference } = useTheme();

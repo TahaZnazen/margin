@@ -64,7 +64,11 @@ export function LibraryView() {
   const [editing, setEditing] = useState<Book | null>(null);
   const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` is the reload signal from the upload provider.
+  // Bumps when documents change on another device or tab.
+  const [syncTick, setSyncTick] = useState(0);
+  useEffect(() => services().documents.subscribe?.(() => setSyncTick((t) => t + 1)), []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` and `syncTick` are reload signals.
   useEffect(() => {
     let cancelled = false;
     const { documents, storage } = services();
@@ -82,7 +86,7 @@ export function LibraryView() {
     return () => {
       cancelled = true;
     };
-  }, [version]);
+  }, [version, syncTick]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -4,18 +4,28 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@powersync/common": "catalog:"
+    "@powersync/common": "catalog:",
+    "@powersync/react": "catalog:",
+    "@powersync/shared-internals": "catalog:",
+    "@powersync/web": "catalog:",
+    "@supabase/supabase-js": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19"
   },
   "devDependencies": {
     "@margin/db": "workspace:*",
     "@types/node": "catalog:",
+    "@types/react": "19.3.0",
     "drizzle-orm": "catalog:",
+    "react": "19.3.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -82,8 +82,15 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     store.load().catch((error) => console.error("Could not load annotations", error));
     const onHide = () => void store.flush();
     window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
-  }, [store]);
+    // Changes that arrive from another device (or tab) show up live.
+    const unsubscribe = services().annotations.subscribe?.(documentId, () => {
+      store.load().catch((error) => console.error("Could not refresh annotations", error));
+    });
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      unsubscribe?.();
+    };
+  }, [store, documentId]);
 
   const active = useMemo(
     () => snap.items.find((item) => item.id === activeId && item.kind === "highlight") ?? null,
