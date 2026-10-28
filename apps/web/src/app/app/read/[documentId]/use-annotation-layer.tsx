@@ -6,6 +6,9 @@ import {
   DEFAULT_HIGHLIGHT_LABELS,
   type HighlightColor,
   type HighlightTarget,
+  targetInside,
+  targetsOverlap,
+  unionTargets,
 } from "@margin/annotation-model";
 import type { OverlayContext, PdfViewerHandle } from "@margin/reader";
 import {
@@ -47,10 +50,16 @@ export interface AnnotationLayerArgs {
   inNotebook: ReadonlySet<string>;
   /** The annotation hovered in the side panel: outlined on the page. */
   hoverId: string | null;
+  /** Highlights merged away: their ids now live on in the survivor (notebook quotes follow). */
+  onMerged?: (removedToSurvivor: ReadonlyMap<string, string>) => void;
 }
 
+const isHighlight = (a: Annotation): a is Annotation & { target: HighlightTarget } =>
+  a.kind === "highlight" && "quote" in a.target;
+
 export function useAnnotationLayer(args: AnnotationLayerArgs) {
-  const { documentId, title, sha256, viewer, wrapper, page, ready, inNotebook, hoverId } = args;
+  const { documentId, title, sha256, viewer, wrapper, page, ready, inNotebook, hoverId, onMerged } =
+    args;
   const store = useMemo(() => annotationStoreFor(services().annotations, documentId), [documentId]);
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const [selection, setSelection] = useState<HighlightTarget | null>(null);
@@ -149,6 +158,44 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     (color: HighlightColor): Annotation | null => {
       if (!selection) return null;
       const target = selection;
+      // Highlights never overlap: a selection touching existing ones merges with them. The
+      // oldest keeps its id (so notebook quotes and #a= links to it stay valid), the new color
+      // wins, comments are joined, and one undo step restores everything.
+      const touching = snap.items
+        .filter(isHighlight)
+        .filter((a) => targetsOverlap(target, a.target))
+        .sort((x, y) => x.createdAt.localeCompare(y.createdAt) || x.id.localeCompare(y.id));
+      const survivor = touching[0];
+      if (survivor) {
+        const union = unionTargets([...touching.map((a) => a.target), target]);
+        const comments = touching.map((a) => a.comment?.trim()).filter(Boolean);
+        const merged: Annotation = {
+          ...survivor,
+          color,
+          target: union,
+          pageStart: union.segments[0].page,
+          quoteText: union.quote.exact,
+          comment: comments.length ? comments.join("\n\n") : null,
+          anchorStatus: "anchored",
+          updatedAt: new Date().toISOString(),
+        };
+        const parsed = AnnotationShape.safeParse({
+          kind: "highlight",
+          color,
+          target: union,
+          quote_text: union.quote.exact,
+          page_start: merged.pageStart,
+        });
+        if (!parsed.success) {
+          console.warn("Invalid merged highlight", parsed.error.message);
+          return null;
+        }
+        markCreate(merged.id);
+        store.merge(merged, touching);
+        onMerged?.(new Map(touching.slice(1).map((a) => [a.id, merged.id])));
+        clearSelection();
+        return merged;
+      }
       const parsed = AnnotationShape.safeParse({
         kind: "highlight",
         color,
@@ -179,7 +226,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
       clearSelection();
       return annotation;
     },
-    [selection, documentId, store, clearSelection],
+    [selection, snap.items, documentId, store, clearSelection, onMerged],
   );
 
   const toggleBookmark = useCallback(() => {
@@ -326,10 +373,27 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
 
   const onSelection = useCallback((target: AnnotationTarget | null) => {
     if (target && "quote" in target) {
-      setSelection(target);
-      setActiveId(null);
+      // Selecting inside an existing highlight edits that highlight (recolor, comment, delete).
+      const inside = latest.current.snap.items
+        .filter(isHighlight)
+        .find((a) => targetInside(target, a.target));
+      if (inside) {
+        setSelection(null);
+        setActiveId(inside.id);
+      } else {
+        setSelection(target);
+        setActiveId(null);
+      }
     } else setSelection(null);
   }, []);
+
+  const removeHighlight = useCallback(
+    (id: string) => {
+      store.remove(id);
+      setActiveId((current) => (current === id ? null : current));
+    },
+    [store],
+  );
 
   // Click on a highlight: the text layer sits above the overlay, so hit-test the rects by hand.
   const onClick = useCallback(
@@ -447,5 +511,6 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     bookmarks,
     snap,
     toggleBookmark,
+    removeHighlight,
   };
 }

@@ -83,6 +83,19 @@
   user-select: text;
 }
 
+/* Catches the pointer over blank space while a text drag runs; see PdfViewer. Sits under the spans. */
+.mr-textlayer > .mr-end {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  user-select: none;
+  cursor: default;
+}
+.mr-selecting .mr-textlayer > .mr-end {
+  display: block;
+}
+
 .mr-textlayer > br {
   display: none;
 }

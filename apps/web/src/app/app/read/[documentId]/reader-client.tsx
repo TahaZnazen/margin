@@ -292,6 +292,7 @@ function Reading({
     ready: (state?.pageCount ?? 0) > 0,
     inNotebook: notebook.referenced,
     hoverId,
+    onMerged: notebook.repoint,
   });
   const { store, jumpTo } = layer;
   useImportExisting({ book, bytes, doc, store, loaded: layer.snap.loaded });
@@ -364,6 +365,10 @@ function Reading({
       onJump={(id) => host.jump(id)}
       onHover={setHoverId}
       onAdd={addToNotebook}
+      onDelete={(id) => {
+        setHoverId(null);
+        layer.removeHighlight(id);
+      }}
     />
   );
 

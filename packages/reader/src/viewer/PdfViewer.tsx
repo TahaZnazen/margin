@@ -644,6 +644,85 @@ export function PdfViewer({
     return () => window.removeEventListener("keydown", onKey);
   }, [goToPage, stepZoom, applyZoom, jumpChapter, pageCount]);
 
+  // Dragging a selection over blank space of a text layer would let the browser jump the caret to
+  // the end of the layer's content (a whole column selected). While a drag that started on text is
+  // running, an invisible "end of content" block sits right after the span holding the selection's
+  // focus (before it when dragging backwards), so blank space never moves the end of the selection.
+  useEffect(() => {
+    const el = root.current;
+    if (!(doc && el)) return;
+    let selecting = false;
+    const stop = () => {
+      if (!selecting) return;
+      selecting = false;
+      el.classList.remove("mr-selecting");
+    };
+    const onDown = (event: MouseEvent) => {
+      if (event.button !== 0 || !(event.target instanceof Element)) return;
+      if (!event.target.closest(".mr-textlayer > span")) return;
+      selecting = true;
+      el.classList.add("mr-selecting");
+    };
+    const onChange = () => {
+      if (!selecting) return;
+      const selection = document.getSelection();
+      const focus = selection?.focusNode;
+      if (!(selection && focus)) return;
+      const host = focus instanceof Element ? focus : focus.parentElement;
+      const span = host?.closest(".mr-textlayer > span");
+      const end = span?.parentElement?.querySelector(":scope > .mr-end");
+      if (!(span && end)) return;
+      const anchor = selection.anchorNode;
+      const forward =
+        !anchor ||
+        (anchor === focus
+          ? selection.anchorOffset <= selection.focusOffset
+          : Boolean(anchor.compareDocumentPosition(focus) & Node.DOCUMENT_POSITION_FOLLOWING));
+      if (forward) {
+        if (span.nextElementSibling !== end && span.nextSibling !== end) span.after(end);
+      } else if (span.previousSibling !== end) {
+        span.before(end);
+      }
+    };
+    // Over blank space the drag snaps to the line under (or nearest to) the pointer: to its end
+    // when the pointer is right of the text, to its start when left of it.
+    const onMove = (event: MouseEvent) => {
+      if (!selecting || !(event.target instanceof Element)) return;
+      if (!event.target.classList.contains("mr-end")) return;
+      const selection = document.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const { clientX: x, clientY: y } = event;
+      let best: { node: Text; dx: number; dy: number; left: boolean } | null = null;
+      for (const span of event.target.parentElement?.querySelectorAll(":scope > span") ?? []) {
+        const node = span.firstChild;
+        if (!(node instanceof Text)) continue;
+        const r = span.getBoundingClientRect();
+        const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+        if (dy > r.height * 0.5) continue;
+        const left = x < r.left;
+        const dx = left ? r.left - x : x - r.right;
+        if (dx < 0) continue;
+        if (!best || dy < best.dy - 0.5 || (Math.abs(dy - best.dy) <= 0.5 && dx < best.dx)) {
+          best = { node, dx, dy, left };
+        }
+      }
+      if (best) selection.extend(best.node, best.left ? 0 : best.node.length);
+    };
+    el.addEventListener("mousedown", onDown, true);
+    window.addEventListener("mousemove", onMove, true);
+    window.addEventListener("mouseup", stop, true);
+    window.addEventListener("blur", stop);
+    document.addEventListener("selectionchange", onChange);
+    return () => {
+      el.removeEventListener("mousedown", onDown, true);
+      window.removeEventListener("mousemove", onMove, true);
+      window.removeEventListener("mouseup", stop, true);
+      window.removeEventListener("blur", stop);
+      document.removeEventListener("selectionchange", onChange);
+      stop();
+    };
+  }, [doc]);
+
   // Selection -> AnnotationTarget.
   useEffect(() => {
     if (!doc) return;
@@ -843,11 +922,15 @@ export async function selectionToTarget(
 
   const covered: Covered[] = [];
   for (const span of root.querySelectorAll<HTMLElement>(".mr-textlayer > span")) {
-    if (!range.intersectsNode(span)) continue;
     const node = span.firstChild;
-    const len = span.textContent?.length ?? 0;
-    const from = node && range.startContainer === node ? range.startOffset : 0;
-    const to = node && range.endContainer === node ? range.endOffset : len;
+    if (!(node instanceof Text)) continue;
+    // Compare the boundary points with the text node itself. A range that ends at (span, 0) or
+    // (layer, i) (triple click, drag past the line end) touches the next span without selecting
+    // anything of it, and must not pull that span in.
+    const len = node.length;
+    if (range.comparePoint(node, len) < 0 || range.comparePoint(node, 0) > 0) continue;
+    const from = range.startContainer === node ? range.startOffset : 0;
+    const to = range.endContainer === node ? range.endOffset : len;
     if (to > from)
       covered.push({ page: Number(span.dataset.page), run: Number(span.dataset.run), from, to });
   }

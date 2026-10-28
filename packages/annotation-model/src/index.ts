@@ -3,6 +3,8 @@
  * (Contract: docs/ARCHITECTURE.md §4, docs/adr/0001-annotation-model.md).
  * Pure TypeScript; zod is the only runtime dependency.
  */
+
+export { targetInside, targetsOverlap, unionTargets } from "./overlap";
 export { buildQuote } from "./quote";
 export {
   AnnotationShape,

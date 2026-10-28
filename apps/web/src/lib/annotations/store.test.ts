@@ -121,4 +121,37 @@ describe("annotation store load race", () => {
     await loading;
     expect(store.get("a")).toBeDefined();
   });
+
+  it("merges highlights into the first one's id; one undo step restores them all", async () => {
+    const { repo, rows } = fakeRepo();
+    const store = createAnnotationStore(repo, "d1");
+    const a = make("a");
+    const b = { ...make("b"), color: "example" as const, comment: "second" };
+    store.create(a);
+    store.create(b);
+    await settle();
+    const merged = { ...a, color: "definition" as const, comment: "second", quoteText: "xx" };
+    store.merge(merged, [a, b]);
+    expect(store.getSnapshot().items.map((i) => i.id)).toEqual(["a"]);
+    expect(store.get("a")?.color).toBe("definition");
+    await settle();
+    expect([...rows.keys()]).toEqual(["a"]);
+
+    expect(store.undo()).not.toBeNull();
+    expect(
+      store
+        .getSnapshot()
+        .items.map((i) => i.id)
+        .sort(),
+    ).toEqual(["a", "b"]);
+    expect(store.get("a")?.color).toBe("key");
+    expect(store.get("b")?.comment).toBe("second");
+    await settle();
+    expect([...rows.keys()].sort()).toEqual(["a", "b"]);
+
+    store.redo();
+    expect(store.getSnapshot().items.map((i) => i.id)).toEqual(["a"]);
+    await settle();
+    expect([...rows.keys()]).toEqual(["a"]);
+  });
 });
