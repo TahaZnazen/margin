@@ -1,7 +1,7 @@
 "use client";
 
 import { HIGHLIGHT_COLORS, type HighlightColor } from "@margin/annotation-model";
-import { ClipboardCopyIcon, MessageSquareIcon, Trash2Icon } from "lucide-react";
+import { ClipboardCopyIcon, MessageSquareIcon, NotebookPenIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flags } from "@/config/flags";
 
@@ -17,6 +17,7 @@ export interface PopoverProps {
   /** Changes whenever the comment field should take focus (the N key). */
   focusNonce: number;
   copied: boolean;
+  inNotebook?: boolean;
   onColor: (color: HighlightColor) => void;
   onNote: () => void;
   onCopy: () => void;
@@ -157,6 +158,14 @@ export function AnnotationPopover(props: PopoverProps) {
           Make card
         </button>
       </div>
+      {props.inNotebook ? (
+        <p
+          className="flex items-center gap-1 px-1 text-muted-foreground text-xs"
+          data-testid="popover-in-notebook"
+        >
+          <NotebookPenIcon className="size-3" /> In notebook
+        </p>
+      ) : null}
       {mode === "edit" ? (
         <textarea
           ref={area}

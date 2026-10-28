@@ -9,7 +9,7 @@ import type {
 } from "./documents-repo";
 
 const COLUMNS =
-  "id, title, author, sha256, byte_size, page_count, storage_path, cover_path, has_text_layer, read_status, last_opened_at, created_at";
+  "id, title, author, sha256, byte_size, page_count, storage_path, cover_path, has_text_layer, read_status, last_opened_at, created_at, annotations_imported_at";
 
 type Row = {
   id: string;
@@ -24,6 +24,7 @@ type Row = {
   read_status: ReadStatus;
   last_opened_at: string | null;
   created_at: string;
+  annotations_imported_at: string | null;
 };
 
 const toBook = (row: Row, percent = 0): Book => ({
@@ -39,6 +40,7 @@ const toBook = (row: Row, percent = 0): Book => ({
   readStatus: row.read_status,
   lastOpenedAt: row.last_opened_at,
   createdAt: row.created_at,
+  annotationsImportedAt: row.annotations_imported_at,
   percent,
 });
 
@@ -106,6 +108,25 @@ export function createSupabaseDocumentsRepo(supabase: SupabaseClient): Documents
       if (patch.hasTextLayer !== undefined) row.has_text_layer = patch.hasTextLayer;
       if (patch.outline !== undefined) row.outline = patch.outline;
       const { error } = await supabase.from("documents").update(row).eq("id", id);
+      fail(error);
+    },
+
+    async claimImport(id) {
+      const { data, error } = await supabase
+        .from("documents")
+        .update({ annotations_imported_at: new Date().toISOString() })
+        .eq("id", id)
+        .is("annotations_imported_at", null)
+        .select("id");
+      fail(error);
+      return (data?.length ?? 0) > 0;
+    },
+
+    async releaseImport(id) {
+      const { error } = await supabase
+        .from("documents")
+        .update({ annotations_imported_at: null })
+        .eq("id", id);
       fail(error);
     },
 

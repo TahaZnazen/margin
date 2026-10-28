@@ -43,10 +43,14 @@ export interface AnnotationLayerArgs {
   /** 0-based page at the top of the viewport, and whether the document is laid out. */
   page: number;
   ready: boolean;
+  /** Annotation ids quoted in the notebook (backlink marker). */
+  inNotebook: ReadonlySet<string>;
+  /** The annotation hovered in the side panel: outlined on the page. */
+  hoverId: string | null;
 }
 
 export function useAnnotationLayer(args: AnnotationLayerArgs) {
-  const { documentId, title, sha256, viewer, wrapper, page, ready } = args;
+  const { documentId, title, sha256, viewer, wrapper, page, ready, inNotebook, hoverId } = args;
   const store = useMemo(() => annotationStoreFor(services().annotations, documentId), [documentId]);
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const [selection, setSelection] = useState<HighlightTarget | null>(null);
@@ -90,9 +94,17 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     (ctx: OverlayContext): ReactNode => {
       const items = byPage.get(ctx.page);
       if (!items) return null;
-      return <PageAnnotations ctx={ctx} items={items} flashId={flash} activeId={activeId} />;
+      return (
+        <PageAnnotations
+          ctx={ctx}
+          items={items}
+          flashId={flash}
+          activeId={activeId}
+          hoverId={hoverId}
+        />
+      );
     },
-    [byPage, flash, activeId],
+    [byPage, flash, activeId, hoverId],
   );
 
   const jumpTo = useCallback(
@@ -381,6 +393,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
         comment={active.comment ?? ""}
         focusNonce={focus?.id === active.id ? focus.n : 0}
         copied={copied}
+        inNotebook={inNotebook.has(active.id)}
         onColor={(color) => store.update(active.id, { color })}
         onNote={() => requestFocus(active.id)}
         onCopy={() =>
@@ -430,6 +443,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     onClick,
     popover,
     jumpTo,
+    store,
     bookmarks,
     snap,
     toggleBookmark,

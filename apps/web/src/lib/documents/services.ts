@@ -4,6 +4,8 @@ import { createSupabaseStorage } from "@/lib/storage/supabase-storage";
 import { createClient } from "@/lib/supabase/client";
 import type { AnnotationsRepo } from "../annotations/annotations-repo";
 import { createSupabaseAnnotationsRepo } from "../annotations/supabase-annotations-repo";
+import type { NotesRepo } from "../notes/notes-repo";
+import { createSupabaseNotesRepo } from "../notes/supabase-notes-repo";
 import type { DocumentsRepo, ReadingStateRepo } from "./documents-repo";
 import {
   createSupabaseDocumentsRepo,
@@ -14,6 +16,7 @@ export interface Services {
   documents: DocumentsRepo;
   readingState: ReadingStateRepo;
   annotations: AnnotationsRepo;
+  notes: NotesRepo;
   storage: StorageProvider;
 }
 
@@ -27,6 +30,7 @@ export function services(): Services {
       documents: createSupabaseDocumentsRepo(supabase),
       readingState: createSupabaseReadingStateRepo(supabase),
       annotations: createSupabaseAnnotationsRepo(supabase),
+      notes: createSupabaseNotesRepo(supabase),
       storage: createSupabaseStorage(supabase, publicEnv().NEXT_PUBLIC_SUPABASE_URL),
     };
   }

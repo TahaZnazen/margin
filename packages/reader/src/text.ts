@@ -46,6 +46,47 @@ export function buildPageText(runs: Omit<TextRun, "start">[]): PageText {
   return { text, runs: out };
 }
 
+/** The parts of a PDF.js `TextContent` this module reads (kept structural: no pdfjs import). */
+export interface RawTextContent {
+  items: readonly unknown[];
+  styles: Record<string, { ascent?: number; descent?: number; fontFamily?: string } | undefined>;
+}
+
+/** PDF.js text content to runs in page coordinates (CropBox, origin top-left). */
+export function pageTextFromContent(content: RawTextContent, view: readonly number[]): PageText {
+  const [x0 = 0, , , y1 = 0] = view;
+  const runs: Omit<TextRun, "start">[] = [];
+  for (const raw of content.items) {
+    const item = raw as {
+      str?: string;
+      transform: number[];
+      fontName: string;
+      width: number;
+      hasEOL: boolean;
+      dir?: string;
+    };
+    if (typeof item.str !== "string") continue; // marked-content markers
+    const [a = 1, b = 0, c = 0, d = 1, e = 0, f = 0] = item.transform;
+    const style = content.styles[item.fontName];
+    const fontSize = Math.hypot(c, d) || Math.hypot(a, b);
+    if (item.str === "" && !item.hasEOL) continue;
+    runs.push({
+      str: item.str,
+      x: e - x0,
+      y: y1 - f,
+      width: item.width,
+      fontSize,
+      ascent: style?.ascent ?? 0.8,
+      descent: Math.abs(style?.descent ?? -0.2),
+      angle: (Math.atan2(b, a) * 180) / Math.PI,
+      fontFamily: style?.fontFamily ?? "sans-serif",
+      dir: item.dir === "rtl" ? "rtl" : "ltr",
+      hasEOL: item.hasEOL,
+    });
+  }
+  return buildPageText(runs);
+}
+
 /** Box of a whole run (AFM-style ascender to descender), axis-aligned. */
 export function runRect(run: TextRun): Rect {
   const up = run.ascent * run.fontSize;

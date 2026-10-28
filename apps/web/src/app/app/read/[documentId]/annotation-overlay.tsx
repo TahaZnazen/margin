@@ -67,11 +67,13 @@ export function PageAnnotations({
   items,
   flashId,
   activeId,
+  hoverId,
 }: {
   ctx: OverlayContext;
   items: readonly Annotation[];
   flashId: string | null;
   activeId: string | null;
+  hoverId: string | null;
 }) {
   const rotated = ctx.view.rotation === 90 || ctx.view.rotation === 270;
   const pageW = (rotated ? ctx.view.pageHeight : ctx.view.pageWidth) * ctx.view.scale;
@@ -90,7 +92,7 @@ export function PageAnnotations({
           );
         }
         const flash = flashId === annotation.id;
-        const active = activeId === annotation.id;
+        const active = activeId === annotation.id || hoverId === annotation.id;
         const out: React.ReactNode[] = [];
         let commentTop: number | null = null;
         for (const segment of annotation.target.segments) {
