@@ -13,10 +13,12 @@ describe("signupsAllowed", () => {
 const URL_ = "https://example.supabase.co";
 const PUBLISHABLE = "sb_publishable_test";
 const SECRET = "sb_secret_test";
+const POWERSYNC = "https://example.powersync.journeyapps.com";
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", URL_);
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", PUBLISHABLE);
+  vi.stubEnv("NEXT_PUBLIC_POWERSYNC_URL", POWERSYNC);
   vi.stubEnv("SUPABASE_SECRET_KEY", SECRET);
 });
 
@@ -25,6 +27,7 @@ describe("publicEnv", () => {
     expect(publicEnv()).toEqual({
       NEXT_PUBLIC_SUPABASE_URL: URL_,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: PUBLISHABLE,
+      NEXT_PUBLIC_POWERSYNC_URL: POWERSYNC,
     });
   });
 

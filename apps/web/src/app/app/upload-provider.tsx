@@ -1,5 +1,6 @@
 "use client";
 
+import { waitForUploads } from "@margin/sync/client";
 import { Button } from "@margin/ui/components/button";
 import { Progress } from "@margin/ui/components/progress";
 import { toast } from "@margin/ui/components/sonner";
@@ -105,6 +106,8 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         );
       }
       patch(jobId, { stage: "finishing", progress: 1 });
+      // The server looks the row up in Postgres: let the background sync deliver it first.
+      await waitForUploads();
       const response = await fetch(`/api/documents/${documentId}/complete`, {
         method: "POST",
         headers: { "content-type": "application/json" },

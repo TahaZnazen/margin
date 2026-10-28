@@ -53,6 +53,8 @@ export interface DocumentsRepo {
   releaseImport(id: string): Promise<void>;
   softDelete(id: string): Promise<void>;
   restore(id: string): Promise<void>;
+  /** Calls `onChange` when documents change here or on another device. Returns the unsubscribe. */
+  subscribe?(onChange: () => void): () => void;
 }
 
 export interface ReadingState {

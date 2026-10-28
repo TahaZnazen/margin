@@ -31,4 +31,6 @@ export interface AnnotationsRepo {
   save(annotation: Annotation): Promise<void>;
   /** Soft delete. */
   remove(id: string): Promise<void>;
+  /** Calls `onChange` when the document's annotations change here or on another device. */
+  subscribe?(documentId: string, onChange: () => void): () => void;
 }

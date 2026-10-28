@@ -12,6 +12,7 @@ import {
   type ReaderPosition,
   type ViewerState,
 } from "@margin/reader";
+import { useUnsyncedWrites } from "@margin/sync/client";
 import { Button } from "@margin/ui/components/button";
 import {
   DropdownMenu,
@@ -28,13 +29,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { QuoteHost } from "@/components/notes/note-editor";
+import { SyncStatus } from "@/components/sync-status";
 import type { Book, ReadingState } from "@/lib/documents/documents-repo";
 import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { exportBookMarkdown, exportBookPdf } from "@/lib/export/client";
 import { useNotebook } from "@/lib/notes/use-notebook";
-import { createSupabaseSettingsRepo } from "@/lib/settings/supabase-settings-repo";
-import { createClient } from "@/lib/supabase/client";
 import { SidePanel } from "./side-panel";
 import { useAnnotationLayer } from "./use-annotation-layer";
 import { useImportExisting } from "./use-import";
@@ -82,14 +82,12 @@ export function ReaderClient() {
     // effects when it is shown again. Drop the stale viewer so the reopen mounts a fresh one at
     // the latest saved position, instead of re-opening the old viewer mid-layout.
     setPhase((prev) => (prev.kind === "loading" ? prev : { kind: "loading", progress: null }));
-    const { documents, readingState, storage } = services();
+    const { documents, readingState, storage, settings: settingsRepo } = services();
     (async () => {
       const [book, saved, settings] = await Promise.all([
         documents.get(documentId),
         readingState.get(documentId),
-        createSupabaseSettingsRepo(createClient())
-          .get()
-          .catch(() => null),
+        settingsRepo.get().catch(() => null),
       ]);
       if (!book) throw new Error("This book is not in your library.");
       let blob: Blob | File | null = await opfsRead(documentId);
@@ -110,9 +108,11 @@ export function ReaderClient() {
       }
       const bytes = await blob.arrayBuffer();
       if (cancelled) return;
+      // A #a=<annotation> deep link wins over the resume position (the jump would otherwise race it).
+      const deepLinked = /[#&]a=/.test(window.location.hash);
       const initial: ReaderPosition = {
-        page: saved?.page ?? 0,
-        offsetPt: saved?.offsetPt ?? 0,
+        page: deepLinked ? 0 : (saved?.page ?? 0),
+        offsetPt: deepLinked ? 0 : (saved?.offsetPt ?? 0),
         zoom: saved?.zoom ?? settings?.readerPrefs.defaultZoom ?? "fit-width",
       };
       setPhase({
@@ -148,6 +148,7 @@ export function ReaderClient() {
         <h1 className="min-w-0 flex-1 truncate font-serif text-base" data-testid="book-title">
           {phase.kind === "ready" ? phase.book.title : ""}
         </h1>
+        <SyncStatus />
         <ThemeSwitch />
       </header>
       {phase.kind === "loading" ? (
@@ -281,6 +282,7 @@ function Reading({
     };
   }, [flush, schedule]);
 
+  const unsynced = useUnsyncedWrites();
   const layer = useAnnotationLayer({
     documentId,
     title: book.title,
@@ -537,7 +539,7 @@ function Reading({
           {firstPageMs === null ? "" : firstPageMs.toFixed(1)}
         </output>
         <output data-testid="error-code">{error?.code ?? ""}</output>
-        <output data-testid="pending-writes">{layer.snap.pending}</output>
+        <output data-testid="pending-writes">{layer.snap.pending + unsynced}</output>
         <output data-testid="notebook-pending">{notebook.pending}</output>
       </div>
     </>

@@ -163,6 +163,13 @@ test("rejects non-PDF, over-cap and corrupted files with clear messages", async 
 
   // The placeholder row of the corrupted upload is dropped just after the message appears.
   await expect.poll(async () => (await rows()).length).toBe(2);
+  // The placeholder's insert and its delete are two local writes: let both reach the server before
+  // the browser context closes (the poll above can pass before the insert has even landed).
+  await expect
+    .poll(() =>
+      page.evaluate(async () => (await window.__margin?.db().getUploadQueueStats())?.count ?? 1),
+    )
+    .toBe(0);
 });
 
 test("reopen restores the position, and so does a second device", async ({

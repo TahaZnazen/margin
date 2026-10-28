@@ -82,8 +82,15 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     store.load().catch((error) => console.error("Could not load annotations", error));
     const onHide = () => void store.flush();
     window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
-  }, [store]);
+    // Changes that arrive from another device (or tab) show up live.
+    const unsubscribe = services().annotations.subscribe?.(documentId, () => {
+      store.load().catch((error) => console.error("Could not refresh annotations", error));
+    });
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      unsubscribe?.();
+    };
+  }, [store, documentId]);
 
   const active = useMemo(
     () => snap.items.find((item) => item.id === activeId && item.kind === "highlight") ?? null,
@@ -143,11 +150,20 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
       if (!store.get(id)) return;
       handled.current = id;
       jumpTo(id);
+      // Pages are still measuring when the book has just opened (local data arrives instantly):
+      // scroll again once the layout has settled, so the highlight ends up in view.
+      for (const delay of [300, 900]) {
+        setTimeout(() => {
+          const a = store.get(id);
+          const rect = a?.target.segments[0].rects[0];
+          if (a && rect) viewer.current?.goToRect(a.pageStart, rect);
+        }, delay);
+      }
     };
     apply();
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
-  }, [ready, snap.loaded, store, jumpTo]);
+  }, [ready, snap.loaded, store, jumpTo, viewer]);
 
   const clearSelection = useCallback(() => {
     document.getSelection()?.removeAllRanges();

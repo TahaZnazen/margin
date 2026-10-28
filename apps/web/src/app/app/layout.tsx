@@ -10,7 +10,12 @@ async function ShellWithUser({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const email = typeof data?.claims.email === "string" ? data.claims.email : "";
-  return <AppShell email={email}>{children}</AppShell>;
+  const userId = typeof data?.claims.sub === "string" ? data.claims.sub : "";
+  return (
+    <AppShell email={email} userId={userId}>
+      {children}
+    </AppShell>
+  );
 }
 
 export default function AppLayout({ children }: LayoutProps<"/app">) {

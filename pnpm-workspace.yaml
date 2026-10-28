@@ -5,6 +5,9 @@ packages:
 
 catalog:
   "@powersync/common": 2.4.0
+  "@powersync/react": 2.1.0
+  "@powersync/shared-internals": 1.4.0
+  "@powersync/web": 2.5.0
   "@supabase/supabase-js": 2.118.0
   "@types/node": ^24.19.2
   pdf-lib: 1.17.1
