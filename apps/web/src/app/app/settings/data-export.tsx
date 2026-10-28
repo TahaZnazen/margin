@@ -12,7 +12,7 @@ export function DataExport() {
   async function run() {
     setBusy("Starting…");
     try {
-      const { bytes, counts } = await exportEverything(includePdfs, (p) =>
+      const { bytes, counts, skippedPdfs } = await exportEverything(includePdfs, (p) =>
         setBusy(`${p.step} (${p.done + 1}/${p.total})`),
       );
       const stamp = new Date().toISOString().slice(0, 10);
@@ -20,6 +20,9 @@ export function DataExport() {
       toast.success(
         `Exported ${counts.documents} books, ${counts.annotations} annotations and ${counts.notes} notes.`,
       );
+      if (skippedPdfs.length > 0) {
+        toast.warning(`Couldn't include the PDF of: ${skippedPdfs.join(", ")}`);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The export failed.");
     } finally {

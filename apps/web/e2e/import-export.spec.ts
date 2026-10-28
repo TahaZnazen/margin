@@ -170,6 +170,16 @@ test("import on upload, Markdown and annotated PDF export, round trip through th
     items.filter((r) => r.quote_text === "This sentence carries a yellow imported highlight."),
   ).toHaveLength(2);
 
+  // Both uploads are readable server-side before the export looks for their files.
+  await expect
+    .poll(
+      async () => (await rows("documents")).filter((d) => d.read_status === "readable").length,
+      {
+        timeout: 30_000,
+      },
+    )
+    .toBe(2);
+
   // Settings -> Data: the zip has every table and every book's Markdown.
   await page.goto("/app/settings");
   const zipDownload = page.waitForEvent("download");

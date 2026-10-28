@@ -137,7 +137,7 @@ export interface EverythingProgress {
 export async function exportEverything(
   includePdfs: boolean,
   onProgress: (p: EverythingProgress) => void = () => undefined,
-): Promise<{ bytes: Uint8Array; counts: Record<string, number> }> {
+): Promise<{ bytes: Uint8Array; counts: Record<string, number>; skippedPdfs: string[] }> {
   const supabase = createClient();
   const tables = {} as BackupRows;
   for (const [i, table] of BACKUP_TABLES.entries()) {
@@ -149,11 +149,21 @@ export async function exportEverything(
   >;
   const exportedAt = new Date().toISOString();
   const books: BackupBook[] = [];
+  const skippedPdfs: string[] = [];
   for (const [i, doc] of tables.documents.entries()) {
     const id = String(doc.id);
     onProgress({ step: `Packing ${String(doc.title)}`, done: i, total: tables.documents.length });
     const notebook = tables.notes.find((n) => n.document_id === id);
     const outline = Array.isArray(doc.outline) ? (doc.outline as OutlineItem[]) : [];
+    let pdf: Uint8Array | undefined;
+    if (includePdfs) {
+      try {
+        pdf = await pdfBytes(id, (doc.storage_path as string | null) ?? null);
+      } catch (error) {
+        console.warn("PDF left out of the export", id, error);
+        skippedPdfs.push(String(doc.title));
+      }
+    }
     books.push({
       id,
       title: String(doc.title),
@@ -168,12 +178,9 @@ export async function exportEverything(
         annotations: tables.annotations.filter((a) => a.document_id === id).map(rowAnnotation),
         notebook: notebook ? (asDoc(notebook.doc_json) as JsonNode) : null,
       }),
-      pdf:
-        includePdfs && doc.read_status === "readable"
-          ? await pdfBytes(id, (doc.storage_path as string | null) ?? null).catch(() => undefined)
-          : undefined,
+      pdf,
     });
   }
   const counts = Object.fromEntries(BACKUP_TABLES.map((t) => [t, tables[t].length]));
-  return { bytes: buildBackupZip({ exportedAt, tables, books }), counts };
+  return { bytes: buildBackupZip({ exportedAt, tables, books }), counts, skippedPdfs };
 }
