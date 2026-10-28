@@ -150,11 +150,20 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
       if (!store.get(id)) return;
       handled.current = id;
       jumpTo(id);
+      // Pages are still measuring when the book has just opened (local data arrives instantly):
+      // scroll again once the layout has settled, so the highlight ends up in view.
+      for (const delay of [300, 900]) {
+        setTimeout(() => {
+          const a = store.get(id);
+          const rect = a?.target.segments[0].rects[0];
+          if (a && rect) viewer.current?.goToRect(a.pageStart, rect);
+        }, delay);
+      }
     };
     apply();
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
-  }, [ready, snap.loaded, store, jumpTo]);
+  }, [ready, snap.loaded, store, jumpTo, viewer]);
 
   const clearSelection = useCallback(() => {
     document.getSelection()?.removeAllRanges();

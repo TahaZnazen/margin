@@ -108,9 +108,11 @@ export function ReaderClient() {
       }
       const bytes = await blob.arrayBuffer();
       if (cancelled) return;
+      // A #a=<annotation> deep link wins over the resume position (the jump would otherwise race it).
+      const deepLinked = /[#&]a=/.test(window.location.hash);
       const initial: ReaderPosition = {
-        page: saved?.page ?? 0,
-        offsetPt: saved?.offsetPt ?? 0,
+        page: deepLinked ? 0 : (saved?.page ?? 0),
+        offsetPt: deepLinked ? 0 : (saved?.offsetPt ?? 0),
         zoom: saved?.zoom ?? settings?.readerPrefs.defaultZoom ?? "fit-width",
       };
       setPhase({
