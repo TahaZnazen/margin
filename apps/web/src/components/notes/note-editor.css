@@ -1,0 +1,124 @@
+/* Notebook editor (P10). Colors come from the P03 tokens. */
+.mr-note-content {
+  min-height: 12rem;
+  padding: 0.75rem;
+  outline: none;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.mr-note-content > * + * {
+  margin-top: 0.5rem;
+}
+.mr-note-content h1,
+.mr-note-content h2,
+.mr-note-content h3 {
+  font-family: var(--font-serif, serif);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.mr-note-content h1 {
+  font-size: 1.4rem;
+}
+.mr-note-content h2 {
+  font-size: 1.2rem;
+}
+.mr-note-content h3 {
+  font-size: 1.05rem;
+}
+.mr-note-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.mr-note-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.mr-note-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.mr-note-content ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.mr-note-content ul[data-type="taskList"] li > label {
+  margin-top: 0.3rem;
+}
+.mr-note-content ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.mr-note-content blockquote:not([data-annotation-quote]) {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--muted-foreground);
+}
+.mr-note-content code {
+  background: var(--muted);
+  border-radius: 4px;
+  padding: 0.05rem 0.25rem;
+  font-size: 0.85em;
+}
+.mr-note-content a {
+  color: var(--accent-foreground, inherit);
+  text-decoration: underline;
+}
+.mr-quote {
+  display: block;
+}
+.mr-quote-body {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-left: 4px solid var(--q-bar, var(--border));
+  background: var(--q-bg, var(--muted));
+  border-radius: 0 6px 6px 0;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+.mr-quote-body:disabled {
+  cursor: default;
+}
+.mr-quote[data-state="deleted"] .mr-quote-text {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted-foreground);
+  opacity: 0.7;
+}
+.mr-quote-text {
+  display: block;
+  font-family: var(--font-serif, serif);
+}
+.mr-quote-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+.mr-quote-page {
+  background: var(--card);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+.mr-quote.ProseMirror-selectednode .mr-quote-body {
+  outline: 2px solid var(--ring);
+}
+.mr-quote[data-color="key"] {
+  --q-bar: var(--hl-key-underline);
+  --q-bg: var(--hl-key-fill);
+}
+.mr-quote[data-color="definition"] {
+  --q-bar: var(--hl-definition-underline);
+  --q-bg: var(--hl-definition-fill);
+}
+.mr-quote[data-color="example"] {
+  --q-bar: var(--hl-example-underline);
+  --q-bg: var(--hl-example-fill);
+}
+.mr-quote[data-color="memorize"] {
+  --q-bar: var(--hl-memorize-underline);
+  --q-bg: var(--hl-memorize-fill);
+}
+.mr-quote[data-color="confusing"] {
+  --q-bar: var(--hl-confusing-underline);
+  --q-bg: var(--hl-confusing-fill);
+}

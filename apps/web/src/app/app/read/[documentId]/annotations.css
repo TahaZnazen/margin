@@ -82,3 +82,9 @@
   background: var(--accent);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
 }
+
+/* Side panel list (P10): offscreen items skip layout and paint, which keeps long lists cheap. */
+.mr-annot-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}

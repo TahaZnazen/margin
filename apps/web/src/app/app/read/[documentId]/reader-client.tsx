@@ -2,8 +2,9 @@
 
 import "@margin/reader/viewer.css";
 import "./annotations.css";
-import type { HighlightColor } from "@margin/annotation-model";
+import { DEFAULT_HIGHLIGHT_LABELS, type HighlightColor } from "@margin/annotation-model";
 import {
+  type OutlineItem,
   PdfViewer,
   type PdfViewerHandle,
   type ReaderError,
@@ -12,16 +13,21 @@ import {
 } from "@margin/reader";
 import { Button } from "@margin/ui/components/button";
 import { Progress } from "@margin/ui/components/progress";
+import { Sheet, SheetContent, SheetTitle } from "@margin/ui/components/sheet";
+import { toast } from "@margin/ui/components/sonner";
 import { ThemeSwitch } from "@margin/ui/components/theme-switch";
-import { ArrowLeftIcon, BookmarkIcon } from "lucide-react";
+import { ArrowLeftIcon, BookmarkIcon, PanelRightIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { QuoteHost } from "@/components/notes/note-editor";
 import type { Book, ReadingState } from "@/lib/documents/documents-repo";
 import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
+import { useNotebook } from "@/lib/notes/use-notebook";
 import { createSupabaseSettingsRepo } from "@/lib/settings/supabase-settings-repo";
 import { createClient } from "@/lib/supabase/client";
+import { SidePanel } from "./side-panel";
 import { useAnnotationLayer } from "./use-annotation-layer";
 
 const SAVE_DEBOUNCE_MS = 1000;
@@ -165,6 +171,19 @@ export function ReaderClient() {
   );
 }
 
+/** Below 768 px the right panel is a bottom sheet (docs/design/reader-layout.md). */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return narrow;
+}
+
 function Reading({
   documentId,
   bytes,
@@ -186,6 +205,12 @@ function Reading({
   const viewer = useRef<PdfViewerHandle>(null);
   const wrapper = useRef<HTMLDivElement>(null);
   const [railOpen, setRailOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [tab, setTab] = useState("annotations");
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [outline, setOutline] = useState<OutlineItem[]>([]);
+  const narrow = useNarrow();
+  const notebook = useNotebook(documentId);
   const position = useRef<ReaderPosition | null>(null);
   const pageCount = useRef(0);
   const seconds = useRef(initialSeconds);
@@ -255,7 +280,80 @@ function Reading({
     wrapper,
     page: state?.page ?? 0,
     ready: (state?.pageCount ?? 0) > 0,
+    inNotebook: notebook.referenced,
+    hoverId,
   });
+  const { store, jumpTo } = layer;
+
+  const labelMap = useMemo(
+    () => ({ ...DEFAULT_HIGHLIGHT_LABELS, ...labels }) as Record<HighlightColor, string>,
+    [labels],
+  );
+  const host = useMemo<QuoteHost>(
+    () => ({
+      loaded: layer.snap.loaded,
+      get: (id) => {
+        const a = layer.snap.items.find((i) => i.id === id);
+        return a ? { color: a.color, quote: a.quoteText ?? "", page: a.pageStart } : undefined;
+      },
+      attrsFor: (id) => {
+        const a = store.get(id);
+        return a
+          ? {
+              annotationId: a.id,
+              quoteSnapshot: a.quoteText ?? "",
+              color: a.color,
+              page: a.pageStart,
+            }
+          : undefined;
+      },
+      jump: (id) => {
+        if (narrow) setPanelOpen(false);
+        jumpTo(id);
+      },
+    }),
+    [layer.snap, store, jumpTo, narrow],
+  );
+  const addToNotebook = useCallback(
+    (id: string) => {
+      const attrs = host.attrsFor(id);
+      if (!attrs) return;
+      notebook.addQuote(attrs);
+      toast.success("Added to your notebook");
+    },
+    [host, notebook],
+  );
+
+  // "]" toggles the right panel (docs/design/reader-layout.md).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "]" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+      )
+        return;
+      setPanelOpen((o) => !o);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const panel = (
+    <SidePanel
+      items={layer.snap.items}
+      outline={outline}
+      labels={labelMap}
+      notebook={notebook}
+      host={host}
+      tab={tab}
+      onTab={setTab}
+      onJump={(id) => host.jump(id)}
+      onHover={setHoverId}
+      onAdd={addToNotebook}
+    />
+  );
 
   const progress = state && state.pageCount > 1 ? (state.page / (state.pageCount - 1)) * 100 : 0;
 
@@ -306,8 +404,20 @@ function Reading({
               setState(s);
             }}
             onFirstPage={setFirstPageMs}
+            onDocumentLoad={(_doc, items) => setOutline(items)}
             onError={setError}
           />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Annotations panel"
+            aria-pressed={panelOpen}
+            data-testid="panel-toggle"
+            className="absolute top-2 right-14 z-10 bg-card/90"
+            onClick={() => setPanelOpen((open) => !open)}
+          >
+            <PanelRightIcon />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -336,6 +446,28 @@ function Reading({
             </output>
           ) : null}
         </div>
+        {panelOpen && !narrow ? (
+          <aside
+            aria-label="Annotations and notebook"
+            data-testid="right-panel"
+            className="flex w-[22rem] shrink-0 flex-col border-l bg-background"
+          >
+            {panel}
+          </aside>
+        ) : null}
+        {narrow ? (
+          <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
+            <SheetContent
+              side="bottom"
+              data-testid="right-panel"
+              className="h-[80vh] gap-0 p-0"
+              showCloseButton
+            >
+              <SheetTitle className="sr-only">Annotations and notebook</SheetTitle>
+              {panel}
+            </SheetContent>
+          </Sheet>
+        ) : null}
         {layer.popover}
       </div>
       <div className="h-0.5 shrink-0 bg-border" aria-hidden>
@@ -347,6 +479,7 @@ function Reading({
         </output>
         <output data-testid="error-code">{error?.code ?? ""}</output>
         <output data-testid="pending-writes">{layer.snap.pending}</output>
+        <output data-testid="notebook-pending">{notebook.pending}</output>
       </div>
     </>
   );
