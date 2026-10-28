@@ -18,7 +18,6 @@
       "passThroughEnv": ["NEXT_PUBLIC_*", "SUPABASE_*"]
     },
     "e2e": {
-      "dependsOn": ["build"],
       "cache": false,
       "passThroughEnv": ["NEXT_PUBLIC_*", "SUPABASE_*", "PLAYWRIGHT_*"]
     }

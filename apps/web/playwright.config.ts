@@ -24,11 +24,12 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `pnpm start --port ${port}`,
+    command: `node scripts/e2e-server.mjs ${port}`,
     // Tests expect the production default (sign-up hidden), whatever .env.local says.
     env: { ...process.env, ALLOW_SIGNUPS: "false" },
     url: baseURL,
-    reuseExistingServer: !isCI,
-    timeout: 120_000,
+    // Never reuse a server already on the port: it could be serving an older build.
+    reuseExistingServer: false,
+    timeout: 300_000,
   },
 });

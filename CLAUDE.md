@@ -87,7 +87,7 @@ Node 24 LTS (`.nvmrc`) and pnpm 11 (`packageManager`, via `corepack enable`). Ru
 | `pnpm lint` | Biome lint + format check. `pnpm format` applies fixes |
 | `pnpm test` | Unit tests (Vitest project `unit`): no network, no secrets. Filter by path: `pnpm test packages/db` |
 | `pnpm test:integration` | `*.int.test.ts` files (Vitest project `integration`) against `margin-dev`; reads `apps/web/.env.local` or the environment |
-| `pnpm e2e` | Builds, then runs Playwright (`apps/web/e2e`) against `next start` on port 3100. First run: `pnpm --filter @margin/web exec playwright install chromium` |
+| `pnpm e2e` | Playwright (`apps/web/e2e`): a clean production build into `apps/web/.next-e2e` (isolated from `pnpm dev`), then `next start` on port 3100 (never reuses a running server). First run: `pnpm fixtures` and `pnpm --filter @margin/web exec playwright install chromium` |
 | `pnpm --filter @margin/web check:server-only` | Proves that importing the admin client from a Client Component fails the build |
 
 Where things live:
