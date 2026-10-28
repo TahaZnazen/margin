@@ -49,6 +49,8 @@ export interface DocumentsRepo {
   update(id: string, patch: BookPatch): Promise<void>;
   /** Atomically marks the import as started; false when it was already claimed elsewhere. */
   claimImport(id: string): Promise<boolean>;
+  /** Undoes a claim after a failed import so the next open retries. */
+  releaseImport(id: string): Promise<void>;
   softDelete(id: string): Promise<void>;
   restore(id: string): Promise<void>;
 }

@@ -122,6 +122,14 @@ export function createSupabaseDocumentsRepo(supabase: SupabaseClient): Documents
       return (data?.length ?? 0) > 0;
     },
 
+    async releaseImport(id) {
+      const { error } = await supabase
+        .from("documents")
+        .update({ annotations_imported_at: null })
+        .eq("id", id);
+      fail(error);
+    },
+
     async softDelete(id) {
       const { error } = await supabase
         .from("documents")

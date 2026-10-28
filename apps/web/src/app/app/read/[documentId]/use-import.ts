@@ -95,7 +95,11 @@ export function useImportExisting(args: {
         );
       } catch (error) {
         console.warn("Could not import the PDF's own annotations", error);
-        toast.error("Couldn't import the highlights already in this PDF.");
+        // Give the claim back so the next open tries again instead of losing the highlights.
+        await services()
+          .documents.releaseImport(book.id)
+          .catch(() => undefined);
+        toast.error("Couldn't import the highlights already in this PDF. We'll retry next time.");
       }
     })().catch((error) => console.warn("Import check failed", error));
   }, [book, bytes, doc, store, loaded]);

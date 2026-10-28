@@ -115,6 +115,8 @@ export function NotesView() {
     try {
       await services().notes.save(note);
     } catch {
+      setNotes((prev) => (prev ?? []).filter((n) => n.id !== note.id));
+      setSelected(null);
       toast.error("Couldn't create the note.");
     }
   };
@@ -125,6 +127,7 @@ export function NotesView() {
     try {
       await services().notes.remove(note.id);
     } catch {
+      setNotes((prev) => [note, ...(prev ?? [])]);
       toast.error("Couldn't delete the note.");
     }
   };
