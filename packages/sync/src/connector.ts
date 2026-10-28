@@ -23,6 +23,7 @@ const JSON_COLUMNS: Record<string, readonly string[]> = {
 const BOOLEAN_COLUMNS: Record<string, readonly string[]> = { documents: ["has_text_layer"] };
 
 const BATCH = 100;
+const UPLOAD_LOCK = "margin-sync-upload";
 
 /** Local SQLite values to the JSON shapes PostgREST expects. */
 export function toRemote(
@@ -89,7 +90,18 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     };
   }
 
+  /**
+   * One upload at a time across every tab (Web Locks), and within a tab. Two overlapping uploads
+   * would both read the same queue head and could send a row's insert after its delete.
+   */
   async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
+    const run = () => this.upload(database);
+    const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+    if (locks) await locks.request(UPLOAD_LOCK, run);
+    else await run();
+  }
+
+  private async upload(database: AbstractPowerSyncDatabase): Promise<void> {
     for (;;) {
       const batch = await database.getCrudBatch(BATCH);
       if (!batch) return;
