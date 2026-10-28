@@ -21,6 +21,8 @@ jobs:
         with:
           names: NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY SUPABASE_SECRET_KEY
       - uses: ./.github/actions/setup
+      - name: Download test PDFs
+        run: pnpm fixtures
       - name: Install Playwright browser
         run: pnpm --filter @margin/web exec playwright install --with-deps chromium
       - run: pnpm e2e
