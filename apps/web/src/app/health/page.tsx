@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { checkSupabaseHealth } from "@/server/health";
 
-export default function Home() {
+export default function Health() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
       <h1 className="font-semibold text-4xl tracking-tight">Margin</h1>
