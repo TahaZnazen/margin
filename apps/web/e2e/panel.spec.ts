@@ -128,7 +128,7 @@ test("panel lists highlights, filters by color and text, click jumps and flashes
   await expect(page.getByTestId("highlight-rect")).toHaveCount(3);
   await expect(page.getByTestId("pending-writes")).toHaveText("0", { timeout: 15_000 });
 
-  await page.keyboard.press("]");
+  await page.keyboard.press("p");
   await expect(page.getByTestId("right-panel")).toBeVisible();
   await expect(page.getByTestId("annot-item")).toHaveCount(3);
   await expect(page.getByTestId("count-key")).toHaveText("2");

@@ -335,10 +335,11 @@ function Reading({
     [host, notebook],
   );
 
-  // "]" toggles the right panel (docs/design/reader-layout.md).
+  // "P" toggles the right panel. The design doc says "]", but the viewer already uses [ and ] for
+  // the previous and next chapter (P07), so the panel gets its own key.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "]" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.key !== "p" && e.key !== "P") || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target;
       if (
         t instanceof HTMLElement &&

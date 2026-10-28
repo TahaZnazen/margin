@@ -107,6 +107,13 @@ test("import on upload, Markdown and annotated PDF export, round trip through th
   expect(items.find((r) => r.kind === "bookmark")?.comment).toBe("Imported sticky note");
   expect((await rows("documents"))[0]?.annotations_imported_at).not.toBeNull();
 
+  // A reload would cancel an upload still in flight: wait until the book is readable server-side.
+  await expect
+    .poll(async () => (await rows("documents")).map((d) => d.read_status).join(), {
+      timeout: 90_000,
+    })
+    .toBe("readable");
+
   // Runs once: a reload does not import again.
   await page.reload();
   await expect(page.getByTestId("highlight-rect")).toHaveCount(3);
@@ -172,13 +179,10 @@ test("import on upload, Markdown and annotated PDF export, round trip through th
 
   // Both uploads are readable server-side before the export looks for their files.
   await expect
-    .poll(
-      async () => (await rows("documents")).filter((d) => d.read_status === "readable").length,
-      {
-        timeout: 30_000,
-      },
-    )
-    .toBe(2);
+    .poll(async () => (await rows("documents")).map((d) => d.read_status).join(), {
+      timeout: 90_000,
+    })
+    .toBe("readable,readable");
 
   // Settings -> Data: the zip has every table and every book's Markdown.
   await page.goto("/app/settings");
