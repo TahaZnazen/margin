@@ -145,13 +145,18 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
 
   private upsert(group: CrudEntry[]): Outcome {
     const table = group[0]?.table ?? "";
-    const rows = group.map((e) => ({ ...toRemote(table, e.opData ?? {}, true), id: e.id }));
+    // The same row can be saved twice in a row: a PUT is the whole row, so the last one wins
+    // (and Postgres refuses an upsert that touches one row twice).
+    const last = new Map(group.map((e) => [e.id, e]));
+    const rows = [...last.values()].map((e) => ({
+      ...toRemote(table, e.opData ?? {}, true),
+      id: e.id,
+    }));
     return this.supabase.from(table).upsert(rows, { onConflict: "id" });
   }
 
   private one(entry: CrudEntry): Outcome {
     const table = entry.table;
-    const data = toRemote(table, entry.opData ?? {});
     switch (entry.op) {
       case UpdateType.PUT:
         return this.supabase
@@ -161,7 +166,10 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
             { onConflict: "id" },
           );
       case UpdateType.PATCH:
-        return this.supabase.from(table).update(data).eq("id", entry.id);
+        return this.supabase
+          .from(table)
+          .update(toRemote(table, entry.opData ?? {}))
+          .eq("id", entry.id);
       case UpdateType.DELETE:
         return this.supabase.from(table).delete().eq("id", entry.id);
     }

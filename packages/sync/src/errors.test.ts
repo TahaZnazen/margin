@@ -19,6 +19,7 @@ describe("upload error policy", () => {
     expect(isTransient({ code: "23514", status: 400 })).toBe(false);
     expect(isTransient({ code: "23503", status: 409 })).toBe(false);
     expect(isTransient({ code: "42501", status: 403 })).toBe(false);
+    expect(isTransient({ code: "21000", status: 500 })).toBe(false);
     expect(isTransient({ status: 400, message: "bad" })).toBe(false);
   });
 

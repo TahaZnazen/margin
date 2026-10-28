@@ -63,7 +63,7 @@ export function createPowerSyncAnnotationsRepo(): AnnotationsRepo {
       await db.execute(
         `INSERT OR REPLACE INTO annotations
            (id, user_id, document_id, kind, color, target, page_start, quote_text, comment, tags, anchor_status, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, NULL)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT tags FROM annotations WHERE id = ?), '[]'), ?, ?, ?, NULL)`,
         [
           a.id,
           syncUserId(),
@@ -74,6 +74,7 @@ export function createPowerSyncAnnotationsRepo(): AnnotationsRepo {
           a.pageStart,
           a.quoteText,
           a.comment,
+          a.id, // keeps the tags of a row that is saved again
           a.anchorStatus,
           a.createdAt,
           new Date().toISOString(),

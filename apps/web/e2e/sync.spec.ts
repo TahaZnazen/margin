@@ -196,6 +196,8 @@ test("offline: 50 writes are kept locally, then all reach Postgres and the other
   await ctxA.setOffline(true);
   await expect(pageA.getByTestId("sync-status")).toHaveAttribute("data-state", "offline");
   await saveAnnotations(pageA, documentId, ids);
+  // The same row saved twice in a row (an edit) must not trip the batched upload.
+  await saveAnnotations(pageA, documentId, [ids[0] as string]);
   // Still there from local storage while offline. (A full page reload while offline needs the
   // service worker that caches the app shell: P12 completes that part.)
   expect((await localIds(pageA, documentId)).sort()).toEqual([...ids].sort());

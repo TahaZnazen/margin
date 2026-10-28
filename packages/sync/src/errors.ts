@@ -19,9 +19,11 @@ export function isTransient(failure: UploadFailure): boolean {
   if (code && TRANSIENT_SQLSTATE.test(code)) return true;
   // PostgREST: PGRST0xx is connectivity, PGRST301 an expired JWT (a token refresh fixes it).
   if (code?.startsWith("PGRST")) return code === "PGRST301" || code.startsWith("PGRST0");
+  // A real Postgres error outside the transient classes is permanent, whatever HTTP status
+  // PostgREST wrapped it in (it answers 500 for some, e.g. 21000 cardinality violation).
+  if (code && /^[0-9A-Z]{5}$/.test(code)) return false;
   if (status === 401 || status === 408 || status === 429) return true;
   if (typeof status === "number" && status >= 500) return true;
-  if (code && /^[0-9A-Z]{5}$/.test(code)) return false; // a real Postgres error that isn't transient
   if (typeof status === "number" && status >= 400) return false;
   // No code and no HTTP answer: the network failed (offline, DNS, CORS, aborted).
   if (!code && !status) return true;
