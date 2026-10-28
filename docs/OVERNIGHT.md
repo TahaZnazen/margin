@@ -1,6 +1,6 @@
 # Overnight build log
 
-Autonomous run started 2026-10-28 (night). Queue: highlight bug fixes → P06 sync & offline → P12 PWA & polish (no deploy).
+Autonomous run started 2026-10-28 (night). Queue: highlight bug fixes → P06 sync & offline → UX pass (ebook-style chapters + page thumbnails in the reader, real-user walkthrough) → P12 PWA & polish (no deploy).
 Rules: no deploys, no new accounts, no secret or dashboard changes, no force-push, never weaken RLS or tests. Anything that needs you is listed under "Needs you".
 
 ## Progress
