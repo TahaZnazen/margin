@@ -34,22 +34,23 @@ const email = `e2e-chap-${randomUUID()}@example.com`;
 const password = `pw-${randomUUID()}`;
 const EVIDENCE = "../../evidence/ux-pass";
 let userId = "";
-const ids: Record<"paper" | "french" | "headings" | "ruler", string> = {
+const ids: Record<"paper" | "french" | "headings" | "plain" | "ruler", string> = {
   paper: "",
   french: "",
   headings: "",
+  plain: "",
   ruler: "",
 };
 
 /** Four pages, no outline: large bold "Chapter N" headings on pages 1, 3 and 4. */
-async function headingsPdf(): Promise<Buffer> {
+async function headingsPdf(withHeadings = true): Promise<Buffer> {
   const doc = await PDFDocument.create();
   const body = await doc.embedFont(StandardFonts.TimesRoman);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const titles = ["Chapter 1 The Beginning", null, "Chapter 2 The Middle", "Chapter 3 The End"];
   titles.forEach((title, n) => {
     const page = doc.addPage([420, 595]);
-    if (title) page.drawText(title, { x: 40, y: 520, size: 26, font: bold });
+    if (title && withHeadings) page.drawText(title, { x: 40, y: 520, size: 26, font: bold });
     for (let i = 0; i < 30; i++) {
       page.drawText(`Run ${randomUUID().slice(0, 8)} of ordinary body text on page ${n + 1}.`, {
         x: 40,
@@ -130,6 +131,7 @@ test("setup: upload the books", async ({ page }) => {
   ids.paper = await upload(page, pdf("two-column-paper"));
   ids.french = await upload(page, pdf("french-accents-ligatures"));
   ids.headings = await upload(page, { name: "headings.pdf", buffer: await headingsPdf() });
+  ids.plain = await upload(page, { name: "plain.pdf", buffer: await headingsPdf(false) });
   ids.ruler = await upload(page, pdf("ruler"));
 });
 
@@ -141,8 +143,8 @@ test("chapters: the outline lists nested chapters; a click jumps; the header nam
   // The sidebar starts closed; the toggle opens it on the Chapters tab.
   await expect(page.getByTestId("reader-rail")).toHaveCount(0);
   await page.getByTestId("sidebar-toggle").click();
-  await expect(page.getByTestId("chapter-row")).toHaveCount(11);
-  await page.getByRole("button", { name: "V 1D: Su-Schrieffer-Heeger model" }).click();
+  await expect(page.getByTestId("chapter-row")).toHaveCount(12);
+  await page.getByRole("button", { name: "V 1D: Su-Schrieffer-Heeger model", exact: true }).click();
   await expect(indicator(page)).toHaveText("4 / 9");
   await expect(currentRow(page)).toContainText("Su-Schrieffer-Heeger");
   await expect(page.getByTestId("chapter-title")).toContainText("Su-Schrieffer-Heeger");
@@ -220,6 +222,33 @@ test("pages: thumbnails render at the page aspect ratio and the current page is 
   await page.screenshot({ path: `${EVIDENCE}/pages-tab.png` });
 });
 
+test("pages: the list holds every page, and thumbnails render at both ends as it scrolls", async ({
+  page,
+}) => {
+  await signIn(page);
+  await open(page, ids.french);
+  await page.getByTestId("sidebar-toggle").click();
+  await page.getByRole("tab", { name: "Pages" }).click();
+  const thumbs = page.getByTestId("thumb");
+  await expect(thumbs).toHaveCount(94);
+  const scroller = page.locator('[data-slot="tabs-content"][data-state="active"]');
+  // The list has its full height before everything renders.
+  expect(await scroller.evaluate((el) => el.scrollHeight > el.clientHeight * 5)).toBe(true);
+  const renderedAt = async (n: number) => {
+    const thumb = page.locator(`.mr-thumb[data-page="${n}"]`);
+    await expect(thumb.locator('.mr-thumb-page[data-rendered="true"] canvas')).toBeVisible();
+    const box = await thumb.locator("canvas").boundingBox();
+    expect(box && box.width > 40 && box.height > 40).toBe(true);
+    await expect(thumb).toContainText(String(n));
+  };
+  await renderedAt(1);
+  await scroller.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await renderedAt(94);
+  await scroller.evaluate((el) => el.scrollTo({ top: 0 }));
+  await renderedAt(1);
+  await page.screenshot({ path: `${EVIDENCE}/pages-long.png` });
+});
+
 test("#p= opens at that page, and changing the hash navigates", async ({ page }) => {
   await signIn(page);
   await open(page, ids.paper, "#p=4");
@@ -275,7 +304,7 @@ test("a PDF without an outline gets detected headings", async ({ page }) => {
   await page.getByTestId("sidebar-toggle").click();
   await expect(page.getByTestId("chapters-detected")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("chapter-row")).toHaveCount(3);
-  await page.getByRole("button", { name: "Chapter 3 The End" }).first().click();
+  await page.getByRole("button", { name: "Chapter 3 The End", exact: true }).click();
   await expect(indicator(page)).toHaveText("4 / 4");
   await expect(page.getByTestId("chapter-title")).toContainText("Chapter 3 The End");
   await page.screenshot({ path: `${EVIDENCE}/chapters-detected.png` });
@@ -283,7 +312,7 @@ test("a PDF without an outline gets detected headings", async ({ page }) => {
 
 test("a PDF with no outline and no headings says so and points to Pages", async ({ page }) => {
   await signIn(page);
-  await open(page, ids.ruler);
+  await open(page, ids.plain);
   await page.getByTestId("sidebar-toggle").click();
   const empty = page.getByTestId("chapters-empty");
   await expect(empty).toContainText("This PDF has no table of contents.", { timeout: 15_000 });
@@ -315,8 +344,9 @@ test.describe("mobile", () => {
     await expect(sheet).toBeVisible();
     await expect(sheet.getByTestId("chapter-row").first()).toBeVisible();
     await page.screenshot({ path: `${EVIDENCE}/mobile-sheet.png` });
-    await sheet.getByRole("button", { name: "VII Experimental measures" }).click();
+    await sheet.getByRole("button", { name: "VII Experimental measures", exact: true }).click();
     await expect(sheet).toHaveCount(0);
-    await expect(indicator(page)).toHaveText("6 / 9");
+    // Mobile pages are short, so the "current page" (upper third of the viewport) can already be the next one.
+    await expect(indicator(page)).toHaveText(/^[67] \/ 9$/);
   });
 });

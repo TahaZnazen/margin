@@ -236,6 +236,10 @@
   gap: 0.75rem;
 }
 
+.mr-thumb {
+  flex: none;
+}
+
 .mr-thumb button {
   display: flex;
   flex-direction: column;
