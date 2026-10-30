@@ -2,6 +2,7 @@
  * @margin/reader: the ReaderEngine interface (ADR-0003), the PDF.js adapter and the React viewer.
  * Import "@margin/reader/viewer.css" once in the app.
  */
+export { bodyFontSize, type DeriveOptions, deriveChapters, deriveOutline } from "./derive-outline";
 export * from "./engine";
 export { pdfJsEngine } from "./pdfjs-engine";
 export {

@@ -18,9 +18,26 @@ async function ShellWithUser({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** What a hard load shows while the session resolves: the shell's outline, not a blank page. */
+function ShellSkeleton() {
+  return (
+    <div className="flex min-h-dvh bg-background" aria-busy="true">
+      <div className="hidden w-52 shrink-0 border-r bg-card p-3 md:block">
+        <p className="px-2 pt-1 pb-4 font-semibold font-serif text-xl">Margin</p>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-12 items-center border-b px-4 md:hidden">
+          <p className="font-semibold font-serif text-lg">Margin</p>
+        </div>
+        <div className="hidden h-12 border-b md:block" />
+      </div>
+    </div>
+  );
+}
+
 export default function AppLayout({ children }: LayoutProps<"/app">) {
   return (
-    <Suspense fallback={<div className="min-h-dvh bg-background" />}>
+    <Suspense fallback={<ShellSkeleton />}>
       <ShellWithUser>{children}</ShellWithUser>
     </Suspense>
   );
