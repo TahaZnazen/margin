@@ -52,6 +52,7 @@ function Item({
     <div
       role="group"
       aria-label={a.quoteText ? `Highlight: ${a.quoteText.slice(0, 80)}` : "Highlight"}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: the card is a keyboard target (Enter jumps)
       tabIndex={0}
       draggable
       data-testid="annot-item"
