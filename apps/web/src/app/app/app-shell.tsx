@@ -95,7 +95,7 @@ export function AppShell({
   return (
     <SyncProvider supabase={supabase} userId={userId} endpoint={powersyncUrl()}>
       <UploadProvider>
-        <PwaRegister />
+        <PwaRegister userId={userId} />
         <CommandPalette />
         <div className="flex min-h-dvh bg-background text-foreground">
           <nav

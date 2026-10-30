@@ -75,10 +75,14 @@ async function warmUp(): Promise<void> {
     .map((e) => new URL(e.name, window.location.href))
     .filter((u) => u.origin === window.location.origin && u.pathname.startsWith("/_next/static/"))
     .map((u) => u.pathname + u.search);
-  const manifest = (await (await fetch("/offline-assets.json", { cache: "no-store" })).json()) as {
-    urls: string[];
-  };
-  for (const url of [...loaded, ...manifest.urls]) await warm(ASSETS_CACHE, url).catch(() => {});
+  let big: string[] = [];
+  try {
+    const res = await fetch("/offline-assets.json", { cache: "no-store" });
+    if (res.ok) big = ((await res.json()) as { urls: string[] }).urls;
+  } catch {
+    // Without the list the page's own assets are still cached below.
+  }
+  for (const url of [...loaded, ...big]) await warm(ASSETS_CACHE, url).catch(() => {});
 }
 
 /**
@@ -86,8 +90,17 @@ async function warmUp(): Promise<void> {
  * active, asks the browser not to evict our storage, and keeps the install prompt for the UI.
  * Mounted inside the signed-in app shell, so signed-out pages are never cached.
  */
-export function PwaRegister() {
+export function PwaRegister({ userId }: { userId: string }) {
   useEffect(() => {
+    // Pages stored for another account (no sign-out in between) must never open for this one.
+    try {
+      const previous = localStorage.getItem("margin.pwa.user");
+      if (previous && previous !== userId) void clearOfflinePages();
+      if (userId) localStorage.setItem("margin.pwa.user", userId);
+    } catch {
+      // Blocked storage: nothing to compare.
+    }
+
     const onPrompt = (event: Event) => {
       event.preventDefault();
       deferred = event as InstallPromptEvent;
@@ -148,6 +161,6 @@ export function PwaRegister() {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [userId]);
   return null;
 }
