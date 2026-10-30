@@ -425,6 +425,51 @@ export function PdfViewer({
     return () => el.removeEventListener("wheel", onWheel);
   }, [percent, applyZoom]);
 
+  // Two-finger pinch zooms around the midpoint. The latest percent and applyZoom live in refs so
+  // the gesture survives the re-renders every zoom step causes.
+  const pinchRef = useRef({ percent, applyZoom });
+  pinchRef.current = { percent, applyZoom };
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    let startDist = 0;
+    let startPercent = 0;
+    const dist = (e: TouchEvent) => {
+      const a = e.touches[0];
+      const b = e.touches[1];
+      return a && b ? Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) : 0;
+    };
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        startDist = dist(e);
+        startPercent = pinchRef.current.percent;
+      }
+    };
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !startDist) return;
+      e.preventDefault();
+      const a = e.touches[0];
+      const b = e.touches[1];
+      if (!(a && b)) return;
+      const next = clamp(startPercent * (dist(e) / startDist), MIN_ZOOM, MAX_ZOOM);
+      const midY = (a.clientY + b.clientY) / 2 - el.getBoundingClientRect().top;
+      pinchRef.current.applyZoom(Math.round(next * 10) / 10, midY);
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) startDist = 0;
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
+
   const goToPage = useCallback(
     (target: number, offsetPt = 0) => {
       const el = scroller.current;

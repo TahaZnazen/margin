@@ -16,6 +16,8 @@
   overflow: auto;
   outline: none;
   overscroll-behavior: contain;
+  /* Pan natively; the viewer handles the two-finger pinch itself. */
+  touch-action: pan-x pan-y;
 }
 
 .mr-pages {

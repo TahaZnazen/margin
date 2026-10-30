@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-powersync-assets.mjs && next dev",
-    "build": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-powersync-assets.mjs && next build",
+    "dev": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-powersync-assets.mjs && node scripts/build-sw.mjs && next dev",
+    "build": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-powersync-assets.mjs && node scripts/build-sw.mjs && next build",
     "start": "next start",
-    "typecheck": "next typegen && tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit && tsc --noEmit -p sw/tsconfig.json",
     "e2e": "playwright test",
     "check:server-only": "node scripts/check-server-only.mjs"
   },
@@ -38,13 +38,16 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@margin/fixtures": "workspace:*",
     "@playwright/test": "1.64.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "catalog:",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "esbuild": "^0.28.2",
     "pdfjs-dist": "6.4.299",
+    "serwist": "^9.5.13",
     "tailwindcss": "4.3.3",
     "typescript": "catalog:",
     "vitest": "catalog:"

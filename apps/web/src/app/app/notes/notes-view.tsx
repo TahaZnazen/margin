@@ -74,6 +74,7 @@ export function NotesView() {
   const [titles, setTitles] = useState<Map<string, string>>(new Map());
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const { notes: repo, documents } = services();
@@ -82,7 +83,7 @@ export function NotesView() {
         setNotes(list);
         setTitles(new Map(books.map((b) => [b.id, b.title])));
       })
-      .catch(() => toast.error("Couldn't load your notes."));
+      .catch(() => setLoadError(true));
   }, []);
 
   const filtered = useMemo(() => {
@@ -158,7 +159,14 @@ export function NotesView() {
             <PlusIcon />
           </Button>
         </div>
-        {notes === null ? <p className="text-muted-foreground text-sm">Loading…</p> : null}
+        {notes === null && !loadError ? (
+          <p className="text-muted-foreground text-sm">Loading…</p>
+        ) : null}
+        {loadError ? (
+          <p className="text-destructive text-sm" role="alert" data-testid="notes-error">
+            Couldn't load your notes. Check your connection and reload the page.
+          </p>
+        ) : null}
         {notes && filtered.length === 0 ? (
           <p className="text-muted-foreground text-sm" data-testid="notes-empty">
             {notes.length === 0

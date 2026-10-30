@@ -53,3 +53,7 @@ npm-debug.log*
 /apps/web/public/pdfjs/
 # Copied by `powersync-web copy-assets` (apps/web dev/build scripts)
 /apps/web/public/@powersync/
+
+# Built by apps/web/scripts/build-sw.mjs
+/apps/web/public/sw.js
+/apps/web/public/offline-assets.json

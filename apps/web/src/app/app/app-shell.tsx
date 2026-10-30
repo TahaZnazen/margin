@@ -12,13 +12,24 @@ import {
 } from "@margin/ui/components/dropdown-menu";
 import { cn } from "@margin/ui/lib/utils";
 import { useTheme } from "@margin/ui/theme";
-import { BookOpenIcon, LogOutIcon, NotebookPenIcon, SettingsIcon, UserIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  DownloadIcon,
+  LogOutIcon,
+  NotebookPenIcon,
+  SearchIcon,
+  SettingsIcon,
+  UserIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
+import { CommandPalette } from "@/components/command-palette";
 import { SyncStatus } from "@/components/sync-status";
 import { powersyncUrl } from "@/env";
+import { palette } from "@/lib/commands/store";
 import { services } from "@/lib/documents/services";
+import { clearOfflinePages, PwaRegister, useCanInstall } from "@/lib/pwa/pwa";
 import { createClient } from "@/lib/supabase/client";
 import { UploadProvider } from "./upload-provider";
 
@@ -71,9 +82,11 @@ export function AppShell({
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   useSettingsTheme();
+  const { canInstall, install } = useCanInstall();
 
   async function signOut() {
     await clearLocalData().catch((error) => console.error("Could not clear local data", error));
+    await clearOfflinePages();
     await createClient().auth.signOut();
     router.replace("/sign-in");
     router.refresh();
@@ -82,6 +95,8 @@ export function AppShell({
   return (
     <SyncProvider supabase={supabase} userId={userId} endpoint={powersyncUrl()}>
       <UploadProvider>
+        <PwaRegister userId={userId} />
+        <CommandPalette />
         <div className="flex min-h-dvh bg-background text-foreground">
           <nav
             aria-label="Main"
@@ -109,6 +124,16 @@ export function AppShell({
               <p className="font-semibold font-serif text-lg md:invisible">Margin</p>
               <div className="flex items-center gap-1">
                 <SyncStatus />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Command palette"
+                  title="Command palette (Ctrl+K)"
+                  data-testid="palette-button"
+                  onClick={() => palette.open()}
+                >
+                  <SearchIcon />
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" aria-label="Account menu">
@@ -118,6 +143,11 @@ export function AppShell({
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel data-testid="account-email">{email}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    {canInstall ? (
+                      <DropdownMenuItem onSelect={() => void install()}>
+                        <DownloadIcon /> Install app
+                      </DropdownMenuItem>
+                    ) : null}
                     <DropdownMenuItem onSelect={signOut}>
                       <LogOutIcon /> Sign out
                     </DropdownMenuItem>

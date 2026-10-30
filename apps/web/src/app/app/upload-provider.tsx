@@ -26,6 +26,8 @@ import type { UploadHandle } from "@/lib/storage/storage-provider";
 import { uuidv7 } from "@/lib/uuid";
 import { CompleteUploadResponse } from "@/server/contracts/documents";
 
+const TRAY_DISMISS_MS = 6000;
+
 type Stage = "hashing" | "preparing" | "uploading" | "finishing" | "done" | "failed" | "cancelled";
 
 export interface UploadJob {
@@ -255,6 +257,36 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const pickFiles = useCallback(() => input.current?.click(), []);
+
+  // A finished upload's "Saved" card clears itself after a few seconds (`margin.trayDismissMs` in
+  // localStorage overrides the delay, so a test can keep it on screen).
+  const dismissTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const timers = dismissTimers.current;
+    for (const job of jobs) {
+      if (job.stage !== "done" || timers.has(job.jobId)) continue;
+      let delay = TRAY_DISMISS_MS;
+      try {
+        const override = Number(localStorage.getItem("margin.trayDismissMs"));
+        if (override > 0) delay = override;
+      } catch {
+        // Blocked storage: use the default.
+      }
+      timers.set(
+        job.jobId,
+        setTimeout(() => {
+          timers.delete(job.jobId);
+          dismiss(job.jobId);
+        }, delay),
+      );
+    }
+  }, [jobs, dismiss]);
+  useEffect(() => {
+    const timers = dismissTimers.current;
+    return () => {
+      for (const timer of timers.values()) clearTimeout(timer);
+    };
+  }, []);
 
   // Drop a PDF anywhere in /app.
   useEffect(() => {

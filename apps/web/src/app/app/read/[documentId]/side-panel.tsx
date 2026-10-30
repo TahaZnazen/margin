@@ -47,9 +47,12 @@ function Item({
   onDelete(id: string): void;
 }) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a card with nested buttons cannot be a <button>
+    // A card with its own buttons cannot have the button role (axe: nested-interactive).
+    // biome-ignore lint/a11y/useSemanticElements: a focusable card, not a <fieldset>
     <div
-      role="button"
+      role="group"
+      aria-label={a.quoteText ? `Highlight: ${a.quoteText.slice(0, 80)}` : "Highlight"}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: the card is a keyboard target (Enter jumps)
       tabIndex={0}
       draggable
       data-testid="annot-item"

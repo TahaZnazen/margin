@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@margin/ui/components/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@margin/ui/components/popover";
 import { Progress } from "@margin/ui/components/progress";
 import { Sheet, SheetContent, SheetTitle } from "@margin/ui/components/sheet";
 import { toast } from "@margin/ui/components/sonner";
@@ -33,10 +34,13 @@ import {
   BookmarkIcon,
   CoffeeIcon,
   DownloadIcon,
+  MaximizeIcon,
+  MinusIcon,
   MonitorIcon,
   MoonIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  PlusIcon,
   SunIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -44,11 +48,13 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { QuoteHost } from "@/components/notes/note-editor";
 import { SyncStatus } from "@/components/sync-status";
+import { palette, type ReaderCommands, useRegisterReaderCommands } from "@/lib/commands/store";
 import type { Book, ReadingState } from "@/lib/documents/documents-repo";
 import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { exportBookMarkdown, exportBookPdf } from "@/lib/export/client";
 import { useNotebook } from "@/lib/notes/use-notebook";
+import { warmPage } from "@/lib/pwa/pwa";
 import {
   chapterIndexAt,
   chapterLevel,
@@ -106,12 +112,25 @@ export function ReaderClient() {
     // the latest saved position, instead of re-opening the old viewer mid-layout.
     setPhase((prev) => (prev.kind === "loading" ? prev : { kind: "loading", progress: null }));
     const { documents, readingState, storage, settings: settingsRepo } = services();
+    // Reloading this book while offline needs its page in the cache (a client-side navigation to
+    // it does not store it by itself).
+    if (navigator.serviceWorker?.controller)
+      void warmPage(window.location.pathname).catch(() => {});
     (async () => {
-      const [book, saved, settings] = await Promise.all([
+      let [book, saved, settings] = await Promise.all([
         documents.get(documentId),
         readingState.get(documentId),
         settingsRepo.get().catch(() => null),
       ]);
+      // A link opened on a new device (or right after sign-in) can beat the first sync: give the
+      // local database a few seconds to receive the row before saying the book is missing.
+      for (let tries = 0; !book && tries < 40 && !cancelled; tries++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        [book, saved] = await Promise.all([
+          documents.get(documentId),
+          readingState.get(documentId),
+        ]);
+      }
       if (!book) throw new Error("This book is not in your library.");
       let blob: Blob | File | null = await opfsRead(documentId);
       if (!blob) {
@@ -217,6 +236,97 @@ function ThemeCycle({ className }: { className?: string }) {
   );
 }
 
+interface ZoomActions {
+  percent: number;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  fitWidth: () => void;
+  fitPage: () => void;
+}
+
+function ZoomControls({ percent, zoomIn, zoomOut, fitWidth, fitPage }: ZoomActions) {
+  const label = `${Math.round(percent)}%`;
+  const fit = (
+    <>
+      <Button variant="outline" size="sm" onClick={fitWidth}>
+        Fit width
+      </Button>
+      <Button variant="outline" size="sm" onClick={fitPage}>
+        Fit page
+      </Button>
+    </>
+  );
+  return (
+    <>
+      <div className="hidden items-center gap-0.5 sm:flex" data-testid="zoom-controls">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          aria-label="Zoom out"
+          title="Zoom out (-)"
+          onClick={zoomOut}
+        >
+          <MinusIcon />
+        </Button>
+        <output className="min-w-10 text-center text-xs tabular-nums" data-testid="zoom-percent">
+          {label}
+        </output>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          aria-label="Zoom in"
+          title="Zoom in (+)"
+          onClick={zoomIn}
+        >
+          <PlusIcon />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          aria-label="Fit width"
+          title="Fit width (0)"
+          onClick={fitWidth}
+        >
+          <MaximizeIcon />
+        </Button>
+      </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-1.5 text-xs tabular-nums sm:hidden"
+            aria-label={`Zoom: ${label}`}
+            data-testid="zoom-menu"
+          >
+            {label}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-auto space-y-2 p-2" data-testid="zoom-popover">
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" aria-label="Zoom out" onClick={zoomOut}>
+              <MinusIcon />
+            </Button>
+            <output
+              className="min-w-12 text-center text-sm tabular-nums"
+              data-testid="zoom-percent-phone"
+            >
+              {label}
+            </output>
+            <Button variant="outline" size="icon" aria-label="Zoom in" onClick={zoomIn}>
+              <PlusIcon />
+            </Button>
+          </div>
+          <div className="flex gap-1">{fit}</div>
+        </PopoverContent>
+      </Popover>
+    </>
+  );
+}
+
 function ReaderHeader({
   title,
   chapter,
@@ -224,6 +334,8 @@ function ReaderHeader({
   sidebarOpen,
   onToggleSidebar,
   actions,
+  hidden,
+  overlay,
 }: {
   title: string;
   chapter?: string;
@@ -231,9 +343,23 @@ function ReaderHeader({
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   actions?: React.ReactNode;
+  /** Slid away while reading on a phone; the page keeps its place. */
+  hidden?: boolean;
+  /** Float over the page instead of taking its own row (phones). */
+  overlay?: boolean;
 }) {
   return (
-    <header className="relative flex h-12 shrink-0 items-center gap-1 border-b px-2 sm:gap-2 sm:px-3">
+    <header
+      data-testid="reader-header"
+      data-hidden={hidden ? "true" : undefined}
+      inert={hidden}
+      className={cn(
+        "z-10 flex h-12 shrink-0 items-center gap-1 border-b bg-background px-2 transition-[transform,opacity] duration-(--duration-chrome) sm:gap-2 sm:px-3",
+        // On phones the bar floats over the page, so hiding it never moves the text.
+        overlay ? "absolute inset-x-0 top-0" : "relative",
+        hidden && "-translate-y-full opacity-0",
+      )}
+    >
       <Button asChild variant="ghost" size="icon" aria-label="Back to library">
         <Link href="/app">
           <ArrowLeftIcon />
@@ -318,6 +444,11 @@ function useNarrow(): boolean {
   return narrow;
 }
 
+/** Phones: the top bar floats over the page and slides away while reading (reader-layout.md). */
+function useCompactChrome(): boolean {
+  return useNarrow();
+}
+
 function Reading({
   documentId,
   bytes,
@@ -350,6 +481,14 @@ function Reading({
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [doc, setDoc] = useState<ReaderDocument | null>(null);
   const narrow = useNarrow();
+  const compactChrome = useCompactChrome();
+  const { preference, setPreference } = useTheme();
+  const cycleTheme = () => {
+    const order = ["system", "light", "sepia", "dark"] as const;
+    const next = order[(order.indexOf(preference as (typeof order)[number]) + 1) % order.length];
+    if (next) setPreference(next);
+  };
+  const [barHidden, setBarHidden] = useState(false);
   const notebook = useNotebook(documentId);
   const position = useRef<ReaderPosition | null>(null);
   const pageCount = useRef(0);
@@ -499,6 +638,55 @@ function Reading({
     return () => window.removeEventListener("hashchange", onHash);
   }, [goTo]);
 
+  // Top bar: slides away on scroll down, returns on scroll up, on a tap on the page and on Esc.
+  useEffect(() => {
+    const el = wrapper.current;
+    if (!(el && compactChrome)) {
+      setBarHidden(false);
+      return;
+    }
+    let last: number | null = null;
+    let travelled = 0;
+    const onScroll = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains("mr-scroller")) return;
+      const top = target.scrollTop;
+      if (last !== null) {
+        const delta = top - last;
+        travelled = Math.sign(delta) === Math.sign(travelled) ? travelled + delta : delta;
+        if (travelled > 24 && top > 48) setBarHidden(true);
+        else if (travelled < -16 || top <= 48) setBarHidden(false);
+      }
+      last = top;
+    };
+    const onTap = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") return;
+      if (window.getSelection()?.toString()) return;
+      setBarHidden((hidden) => (hidden ? false : hidden));
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setBarHidden(false);
+    };
+    el.addEventListener("scroll", onScroll, true);
+    el.addEventListener("pointerup", onTap);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      el.removeEventListener("scroll", onScroll, true);
+      el.removeEventListener("pointerup", onTap);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [compactChrome]);
+
+  const zoomActions = useMemo(
+    () => ({
+      zoomIn: () => viewer.current?.zoomIn(),
+      zoomOut: () => viewer.current?.zoomOut(),
+      fitWidth: () => viewer.current?.setZoom("fit-width"),
+      fitPage: () => viewer.current?.setZoom("fit-page"),
+    }),
+    [],
+  );
+
   const labelMap = useMemo(
     () => ({ ...DEFAULT_HIGHLIGHT_LABELS, ...labels }) as Record<HighlightColor, string>,
     [labels],
@@ -537,6 +725,39 @@ function Reading({
     },
     [host, notebook],
   );
+
+  const commands = useMemo<ReaderCommands>(
+    () => ({
+      title: book.title,
+      pageCount: pageTotal,
+      goToPage: (target) => goTo(target),
+      chapters: allChapters,
+      goToChapter: (target, offsetPt) => goTo(target, offsetPt),
+      annotations: layer.snap.items.map((a) => ({
+        id: a.id,
+        kind: a.kind,
+        quote: a.quoteText ?? "",
+        comment: a.comment ?? "",
+        page: a.pageStart,
+      })),
+      jumpToAnnotation: (id) => host.jump(id),
+      toggleSidebar: () => setSidebarOpen(!sidebarOpen),
+      togglePanel: () => setPanelOpen((o) => !o),
+      ...zoomActions,
+    }),
+    [
+      book.title,
+      pageTotal,
+      goTo,
+      allChapters,
+      layer.snap.items,
+      host,
+      setSidebarOpen,
+      sidebarOpen,
+      zoomActions,
+    ],
+  );
+  useRegisterReaderCommands(commands);
 
   // "P" toggles the right panel and "O" the contents sidebar. The design doc says "]" and "[", but
   // the viewer already uses those for the next and previous chapter (P07).
@@ -597,6 +818,7 @@ function Reading({
 
   const actions = (
     <>
+      <ZoomControls percent={state?.percent ?? 100} {...zoomActions} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -678,6 +900,8 @@ function Reading({
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         actions={actions}
+        hidden={barHidden}
+        overlay={compactChrome}
       />
       <div className="relative flex min-h-0 flex-1">
         {!narrow && sidebarOpen ? (
@@ -712,6 +936,11 @@ function Reading({
               setOutline(items);
             }}
             onError={setError}
+            onShortcut={(name) => {
+              if (name === "goto") palette.open("page ");
+              else if (name === "help") palette.openHelp();
+              else if (name === "theme") cycleTheme();
+            }}
           />
           {layer.snap.failing ? (
             <output
