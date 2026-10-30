@@ -62,7 +62,11 @@ export function bodyFontSize(pages: readonly (PageText | null)[]): number {
   return best;
 }
 
-const norm = (s: string) => s.toLowerCase().replace(/[\d\s.]+/g, "");
+/** Running headers differ only by page number; "Chapter 2" and "Chapter 3" are different titles. */
+const norm = (s: string) =>
+  CHAPTER_WORD.test(s)
+    ? s.toLowerCase().replace(/\s+/g, "")
+    : s.toLowerCase().replace(/[\d\s.]+/g, "");
 
 /**
  * One heading per page at most (the largest, earliest group of heading lines). Returns a flat

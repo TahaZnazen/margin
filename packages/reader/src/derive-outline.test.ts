@@ -40,6 +40,15 @@ describe("deriveChapters", () => {
     const pages = Array.from({ length: 8 }, () => page([run("MY BOOK", 40, 14), ...body(30)]));
     expect(deriveChapters(pages)).toEqual([]);
   });
+  it("keeps numbered chapter titles that differ only by number", () => {
+    const pages = [1, 2, 3, 4].map((n) => page([run(`Chapter ${n}`, 90, 24), ...body(30)]));
+    expect(deriveChapters(pages).map((c) => c.title)).toEqual([
+      "Chapter 1",
+      "Chapter 2",
+      "Chapter 3",
+      "Chapter 4",
+    ]);
+  });
   it("returns nothing for plain text", () => {
     expect(deriveChapters([page(body(30)), page(body(30))])).toEqual([]);
   });

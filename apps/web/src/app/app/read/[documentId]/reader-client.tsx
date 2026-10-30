@@ -134,7 +134,7 @@ export function ReaderClient() {
       // A #a=<annotation> deep link wins over the resume position (the jump would otherwise race it).
       const deepLinked = /[#&]a=/.test(window.location.hash);
       // So does a #p=<page> link (1-based, as in the page indicator).
-      const linkedPage = pageFromHash(window.location.hash);
+      const linkedPage = pageFromHash(window.location.hash, book.pageCount ?? undefined);
       const initial: ReaderPosition = {
         page: linkedPage !== null ? linkedPage : deepLinked ? 0 : (saved?.page ?? 0),
         offsetPt: deepLinked || linkedPage !== null ? 0 : (saved?.offsetPt ?? 0),
