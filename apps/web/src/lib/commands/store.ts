@@ -35,11 +35,24 @@ function set(patch: Partial<PaletteState>) {
   for (const l of listeners) l();
 }
 
+/** Where focus was when the palette opened, so closing it hands focus back (keys keep working). */
+let returnFocus: HTMLElement | null = null;
+
 export const palette = {
-  open: (query = "") => set({ open: true, query, help: false }),
+  open: (query = "") => {
+    if (!state.open && document.activeElement instanceof HTMLElement) {
+      returnFocus = document.activeElement;
+    }
+    set({ open: true, query, help: false });
+  },
   close: () => set({ open: false }),
+  /** Called once the dialog is gone (Radix `onCloseAutoFocus`); its focus trap is released by then. */
+  restoreFocus: () => {
+    if (returnFocus?.isConnected) returnFocus.focus();
+    returnFocus = null;
+  },
   setQuery: (query: string) => set({ query }),
-  toggle: () => set({ open: !state.open, query: "", help: false }),
+  toggle: () => (state.open ? palette.close() : palette.open()),
   openHelp: () => set({ help: true, open: false }),
   closeHelp: () => set({ help: false }),
 };

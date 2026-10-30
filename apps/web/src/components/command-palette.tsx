@@ -114,6 +114,10 @@ export function CommandPalette() {
           showCloseButton={false}
           className="top-1/4 translate-y-0 overflow-hidden p-0 sm:max-w-lg"
           data-testid="command-palette"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            palette.restoreFocus();
+          }}
         >
           <DialogHeader className="sr-only">
             <DialogTitle>Command palette</DialogTitle>

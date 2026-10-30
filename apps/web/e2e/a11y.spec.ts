@@ -114,6 +114,7 @@ test("keyboard only: open a book, move around, highlight with a key, write a not
   await page.keyboard.type("1");
   await page.keyboard.press("Enter");
   await expect(indicator).toContainText("1 / 2");
+  await expect(page.getByTestId("command-palette")).toHaveCount(0);
   await page.keyboard.press("o"); // contents sidebar
   await expect(page.getByTestId("reader-rail")).toBeVisible();
   await page.keyboard.press("o");
@@ -138,11 +139,7 @@ test("keyboard only: open a book, move around, highlight with a key, write a not
   await expect(page.getByTestId("shortcut-sheet")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
-  await page.getByRole("combobox", { name: "Command" }).fill("notes");
-  await page
-    .getByRole("option", { name: /^Notes/ })
-    .first()
-    .focus();
+  await page.getByRole("combobox", { name: "Command" }).fill("notes notebook");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/app\/notes$/);
 });
