@@ -19,7 +19,14 @@ Rules: no deploys, no new accounts, no secret or dashboard changes, no force-pus
   - Security review: no findings (uploads still go through your own session, so the database rules apply).
   - Tests: 241 unit, 62 integration, E2E 51/51 twice.
   - Note: reopening the app *while offline* needs P12 (it stores the app itself on your device).
-- ⏳ **UX pass (ebook-style reader, real-user walkthrough)**: agent running.
+- ✅ **Ebook-style reader + real-user walkthrough** merged and pushed (interrupted once by a network drop, resumed).
+  - Left sidebar in the reader (`O` toggles it): **Chapters** (table of contents, current chapter highlighted, click to jump, "Copy link" per chapter), **Pages** (thumbnails for every page — fixes the "only page 9" bug), **Bookmarks**.
+  - Links like `/app/read/<book>#p=42` open at page 42. The current chapter shows under the title, with a "Next chapter" button at the end of a chapter.
+  - PDFs without a table of contents get one guessed from big headings, or a clear message.
+  - Walkthrough fixes: reader buttons moved into the header (they covered the page on phones), one-tap theme switch on phones, visible selected theme, loading skeleton instead of a blank page, settings labels no longer blank while loading.
+  - Left for later: upload cards linger at the bottom of the library on phones; no zoom buttons in the reader (two-column papers are small on phones); guessed chapters can be wrong on unusual PDFs.
+  - Tests: 250 unit, 62 integration, E2E 67/67 twice.
+- ⏳ **P12 installable app & polish**: agent running.
 
 ## Needs you
 
