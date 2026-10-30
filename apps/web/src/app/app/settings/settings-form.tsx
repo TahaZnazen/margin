@@ -105,6 +105,8 @@ export function SettingsForm() {
             <Input
               id={`label-${color}`}
               value={labels[color] ?? ""}
+              placeholder={DEFAULT_HIGHLIGHT_LABELS[color]}
+              disabled={!settings}
               maxLength={40}
               onChange={(event) => setLabels({ ...labels, [color]: event.target.value })}
             />

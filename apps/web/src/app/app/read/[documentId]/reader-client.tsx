@@ -25,13 +25,19 @@ import { Progress } from "@margin/ui/components/progress";
 import { Sheet, SheetContent, SheetTitle } from "@margin/ui/components/sheet";
 import { toast } from "@margin/ui/components/sonner";
 import { ThemeSwitch } from "@margin/ui/components/theme-switch";
+import { cn } from "@margin/ui/lib/utils";
+import { useTheme } from "@margin/ui/theme";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
   BookmarkIcon,
+  CoffeeIcon,
   DownloadIcon,
+  MonitorIcon,
+  MoonIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  SunIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -189,18 +195,42 @@ export function ReaderClient() {
   );
 }
 
+/** One button that steps through the themes: the four-way switch does not fit a phone header. */
+function ThemeCycle({ className }: { className?: string }) {
+  const { preference, setPreference } = useTheme();
+  const order = ["system", "light", "sepia", "dark"] as const;
+  const next = order[(order.indexOf(preference as (typeof order)[number]) + 1) % order.length];
+  const Icon =
+    { system: MonitorIcon, light: SunIcon, sepia: CoffeeIcon, dark: MoonIcon }[
+      preference as (typeof order)[number]
+    ] ?? SunIcon;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn("size-8", className)}
+      aria-label={`Theme: ${preference}. Switch to ${next}`}
+      onClick={() => next && setPreference(next)}
+    >
+      <Icon />
+    </Button>
+  );
+}
+
 function ReaderHeader({
   title,
   chapter,
   chapterProgress,
   sidebarOpen,
   onToggleSidebar,
+  actions,
 }: {
   title: string;
   chapter?: string;
   chapterProgress?: number;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
+  actions?: React.ReactNode;
 }) {
   return (
     <header className="relative flex h-12 shrink-0 items-center gap-1 border-b px-2 sm:gap-2 sm:px-3">
@@ -236,7 +266,9 @@ function ReaderHeader({
         ) : null}
       </div>
       <SyncStatus />
-      <ThemeSwitch />
+      {actions}
+      <ThemeSwitch className="hidden sm:flex" />
+      <ThemeCycle className="sm:hidden" />
       {chapter && chapterProgress !== undefined ? (
         <div
           role="progressbar"
@@ -563,6 +595,78 @@ function Reading({
     />
   );
 
+  const actions = (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 sm:size-9"
+            aria-label="Export"
+            data-testid="export-menu"
+          >
+            <DownloadIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            data-testid="export-markdown"
+            onSelect={() =>
+              void exportBookMarkdown(documentId, outline)
+                .then(() => toast.success("Markdown exported"))
+                .catch((e: unknown) =>
+                  toast.error(e instanceof Error ? e.message : "Export failed"),
+                )
+            }
+          >
+            Export notes as Markdown
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            data-testid="export-pdf"
+            onSelect={() =>
+              void exportBookPdf(documentId, bytes)
+                .then(() => toast.success("Annotated PDF exported"))
+                .catch((e: unknown) =>
+                  toast.error(e instanceof Error ? e.message : "Export failed"),
+                )
+            }
+          >
+            Export annotated PDF
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 sm:size-9"
+        aria-label="Annotations panel"
+        aria-pressed={panelOpen}
+        data-testid="panel-toggle"
+        onClick={() => setPanelOpen((open) => !open)}
+      >
+        <PanelRightIcon />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 sm:size-9"
+        aria-label="Bookmarks"
+        aria-pressed={sidebarOpen && sidebarPrefs.tab === "bookmarks"}
+        data-testid="bookmarks-toggle"
+        onClick={() => {
+          if (sidebarOpen && sidebarPrefs.tab === "bookmarks") setSidebarOpen(false);
+          else {
+            setSidebarTab("bookmarks");
+            setSidebarOpen(true);
+          }
+        }}
+      >
+        <BookmarkIcon />
+      </Button>
+    </>
+  );
+
   const progress = state && state.pageCount > 1 ? (state.page / (state.pageCount - 1)) * 100 : 0;
 
   return (
@@ -573,6 +677,7 @@ function Reading({
         chapterProgress={chapter ? chapterFraction : undefined}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        actions={actions}
       />
       <div className="relative flex min-h-0 flex-1">
         {!narrow && sidebarOpen ? (
@@ -608,73 +713,6 @@ function Reading({
             }}
             onError={setError}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Export"
-                data-testid="export-menu"
-                className="absolute top-2 right-24 z-10 bg-card/90"
-              >
-                <DownloadIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                data-testid="export-markdown"
-                onSelect={() =>
-                  void exportBookMarkdown(documentId, outline)
-                    .then(() => toast.success("Markdown exported"))
-                    .catch((e: unknown) =>
-                      toast.error(e instanceof Error ? e.message : "Export failed"),
-                    )
-                }
-              >
-                Export notes as Markdown
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                data-testid="export-pdf"
-                onSelect={() =>
-                  void exportBookPdf(documentId, bytes)
-                    .then(() => toast.success("Annotated PDF exported"))
-                    .catch((e: unknown) =>
-                      toast.error(e instanceof Error ? e.message : "Export failed"),
-                    )
-                }
-              >
-                Export annotated PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Annotations panel"
-            aria-pressed={panelOpen}
-            data-testid="panel-toggle"
-            className="absolute top-2 right-14 z-10 bg-card/90"
-            onClick={() => setPanelOpen((open) => !open)}
-          >
-            <PanelRightIcon />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Bookmarks"
-            aria-pressed={sidebarOpen && sidebarPrefs.tab === "bookmarks"}
-            data-testid="bookmarks-toggle"
-            className="absolute top-2 right-4 z-10 bg-card/90"
-            onClick={() => {
-              if (sidebarOpen && sidebarPrefs.tab === "bookmarks") setSidebarOpen(false);
-              else {
-                setSidebarTab("bookmarks");
-                setSidebarOpen(true);
-              }
-            }}
-          >
-            <BookmarkIcon />
-          </Button>
           {layer.snap.failing ? (
             <output
               className="absolute top-3 left-4 z-10 rounded-md bg-card px-2 py-1 text-destructive text-xs shadow ring-1 ring-destructive"
