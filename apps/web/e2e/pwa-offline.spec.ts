@@ -21,6 +21,10 @@ let bookUrl = "";
 test.beforeAll(async () => {
   user = await createUser("pwa");
 });
+// Automated browsers skip the service worker by default (see lib/pwa/pwa.tsx); this spec tests it.
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => localStorage.setItem("margin.e2e.pwa", "1"));
+});
 test.afterAll(async () => {
   await deleteUser(user);
 });

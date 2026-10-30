@@ -117,11 +117,20 @@ export function ReaderClient() {
     if (navigator.serviceWorker?.controller)
       void warmPage(window.location.pathname).catch(() => {});
     (async () => {
-      const [book, saved, settings] = await Promise.all([
+      let [book, saved, settings] = await Promise.all([
         documents.get(documentId),
         readingState.get(documentId),
         settingsRepo.get().catch(() => null),
       ]);
+      // A link opened on a new device (or right after sign-in) can beat the first sync: give the
+      // local database a few seconds to receive the row before saying the book is missing.
+      for (let tries = 0; !book && tries < 40 && !cancelled; tries++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        [book, saved] = await Promise.all([
+          documents.get(documentId),
+          readingState.get(documentId),
+        ]);
+      }
       if (!book) throw new Error("This book is not in your library.");
       let blob: Blob | File | null = await opfsRead(documentId);
       if (!blob) {
@@ -326,6 +335,7 @@ function ReaderHeader({
   onToggleSidebar,
   actions,
   hidden,
+  overlay,
 }: {
   title: string;
   chapter?: string;
@@ -335,14 +345,20 @@ function ReaderHeader({
   actions?: React.ReactNode;
   /** Slid away while reading on a phone; the page keeps its place. */
   hidden?: boolean;
+  /** Float over the page instead of taking its own row (phones). */
+  overlay?: boolean;
 }) {
   return (
     <header
       data-testid="reader-header"
       data-hidden={hidden ? "true" : undefined}
       inert={hidden}
-      style={{ marginTop: hidden ? "-3rem" : undefined, opacity: hidden ? 0 : undefined }}
-      className="relative z-10 flex h-12 shrink-0 items-center gap-1 border-b bg-background px-2 transition-[margin-top,opacity] duration-(--duration-chrome) sm:gap-2 sm:px-3"
+      className={cn(
+        "z-10 flex h-12 shrink-0 items-center gap-1 border-b bg-background px-2 transition-[transform,opacity] duration-(--duration-chrome) sm:gap-2 sm:px-3",
+        // On phones the bar floats over the page, so hiding it never moves the text.
+        overlay ? "absolute inset-x-0 top-0" : "relative",
+        hidden && "-translate-y-full opacity-0",
+      )}
     >
       <Button asChild variant="ghost" size="icon" aria-label="Back to library">
         <Link href="/app">
@@ -428,22 +444,9 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-/** Phones and tablets: the top bar slides away while reading (docs/design/reader-layout.md). */
+/** Phones: the top bar floats over the page and slides away while reading (reader-layout.md). */
 function useCompactChrome(): boolean {
-  const [compact, setCompact] = useState(false);
-  useEffect(() => {
-    const queries = [
-      window.matchMedia("(max-width: 767px)"),
-      window.matchMedia("(pointer: coarse)"),
-    ];
-    const on = () => setCompact(queries.some((q) => q.matches));
-    on();
-    for (const q of queries) q.addEventListener("change", on);
-    return () => {
-      for (const q of queries) q.removeEventListener("change", on);
-    };
-  }, []);
-  return compact;
+  return useNarrow();
 }
 
 function Reading({
@@ -898,6 +901,7 @@ function Reading({
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         actions={actions}
         hidden={barHidden}
+        overlay={compactChrome}
       />
       <div className="relative flex min-h-0 flex-1">
         {!narrow && sidebarOpen ? (

@@ -110,20 +110,34 @@ export function PwaRegister() {
       // Blocked storage: ask again next time.
     }
 
+    // Automated browsers (the E2E suite) do not register the worker unless a spec opts in
+    // (localStorage `margin.e2e.pwa`): the PWA specs cover it, and the other specs then measure
+    // the app, not the cache.
+    let automated = false;
+    try {
+      automated = navigator.webdriver && localStorage.getItem("margin.e2e.pwa") !== "1";
+    } catch {
+      automated = false;
+    }
+
     let timer: ReturnType<typeof setTimeout> | undefined;
-    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
+    if (!automated && process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
         .then(() => navigator.serviceWorker.ready)
         .then(() => {
           // After the page has settled, so the warm-up never competes with the first render.
           timer = setTimeout(() => {
-            warmUp()
-              .catch(() => {})
-              .finally(() => {
-                document.documentElement.dataset.offlineReady = "true";
-              });
-          }, 1500);
+            const start = () =>
+              warmUp()
+                .catch(() => {})
+                .finally(() => {
+                  document.documentElement.dataset.offlineReady = "true";
+                });
+            if ("requestIdleCallback" in window)
+              window.requestIdleCallback(start, { timeout: 5000 });
+            else start();
+          }, 3000);
         })
         .catch(() => {
           // No service worker (private window, unsupported): the app still works online.

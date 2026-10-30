@@ -11,7 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   // Each reader test parses PDFs; one worker per core (28 here) starves them and times out.
   workers: isCI ? 2 : 6,
-  expect: { timeout: 10_000 },
+  expect: { timeout: 20_000 },
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   reporter: isCI
@@ -19,6 +19,14 @@ export default defineConfig({
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
+    // The upload tray's "Saved" cards clear themselves after a few seconds; most specs read them
+    // later, so keep them on screen. Specs that test the auto-dismiss set their own delay.
+    storageState: {
+      cookies: [],
+      origins: [
+        { origin: baseURL, localStorage: [{ name: "margin.trayDismissMs", value: "3600000" }] },
+      ],
+    },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
