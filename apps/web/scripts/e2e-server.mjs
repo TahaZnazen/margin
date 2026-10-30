@@ -19,6 +19,7 @@ const run = (args) => {
 };
 run([fileURLToPath(new URL("./copy-pdfjs-assets.mjs", import.meta.url))]);
 run([fileURLToPath(new URL("./copy-powersync-assets.mjs", import.meta.url))]);
+run([fileURLToPath(new URL("./build-sw.mjs", import.meta.url))]);
 run([nextBin, "build"]);
 
 const server = spawn(process.execPath, [nextBin, "start", "--port", port], {

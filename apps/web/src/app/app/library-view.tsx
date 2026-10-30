@@ -10,6 +10,7 @@ import {
 } from "@margin/ui/components/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -21,6 +22,7 @@ import { toast } from "@margin/ui/components/sonner";
 import { cn } from "@margin/ui/lib/utils";
 import {
   AlertTriangleIcon,
+  CloudDownloadIcon,
   LayoutGridIcon,
   ListIcon,
   MoreVerticalIcon,
@@ -30,7 +32,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UNDO_WINDOW_MS } from "@/lib/documents/config";
 import type { Book } from "@/lib/documents/documents-repo";
-import { opfsRemove } from "@/lib/documents/opfs";
+import { keepOffline } from "@/lib/documents/offline";
+import { opfsList, opfsRemove } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { useUploads } from "./upload-provider";
 
@@ -54,7 +57,7 @@ function sortBooks(books: Book[], sort: Sort): Book[] {
 }
 
 export function LibraryView() {
-  const { version, pickFiles } = useUploads();
+  const { version, pickFiles, jobs } = useUploads();
   const [books, setBooks] = useState<Book[] | null>(null);
   const [covers, setCovers] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +65,9 @@ export function LibraryView() {
   const [sort, setSort] = useState<Sort>("recent");
   const [view, setView] = useState<View>("grid");
   const [editing, setEditing] = useState<Book | null>(null);
+  // Books whose PDF is stored on this device (opened once, or "Keep offline").
+  const [offlineIds, setOfflineIds] = useState<Set<string>>(new Set());
+  const [downloading, setDownloading] = useState<Set<string>>(new Set());
   const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   // Bumps when documents change on another device or tab.
@@ -87,6 +93,30 @@ export function LibraryView() {
       cancelled = true;
     };
   }, [version, syncTick]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `books` changes when the library changes.
+  useEffect(() => {
+    void opfsList().then((list) => setOfflineIds(new Set(list.map((f) => f.id))));
+  }, [books]);
+
+  const toggleOffline = useCallback(async (book: Book, keep: boolean) => {
+    if (!keep) {
+      await opfsRemove(book.id);
+      setOfflineIds((ids) => new Set([...ids].filter((id) => id !== book.id)));
+      toast(`Removed "${book.title}" from this device`);
+      return;
+    }
+    setDownloading((ids) => new Set(ids).add(book.id));
+    try {
+      await keepOffline(book);
+      setOfflineIds((ids) => new Set(ids).add(book.id));
+      toast.success(`"${book.title}" is available offline`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not keep this book offline.");
+    } finally {
+      setDownloading((ids) => new Set([...ids].filter((id) => id !== book.id)));
+    }
+  }, []);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -129,7 +159,12 @@ export function LibraryView() {
   }, []);
 
   return (
-    <div className="space-y-5" data-testid="library">
+    // The upload tray floats over the bottom of the page: keep room so it never hides the last row.
+    <div
+      className="space-y-5"
+      data-testid="library"
+      style={{ paddingBottom: jobs.length > 0 ? `${jobs.length * 5.5 + 1}rem` : undefined }}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-auto font-semibold font-serif text-2xl">Library</h1>
         <Input
@@ -217,6 +252,9 @@ export function LibraryView() {
             book={book}
             cover={book.coverPath ? covers.get(book.coverPath) : undefined}
             view={view}
+            offline={offlineIds.has(book.id)}
+            downloading={downloading.has(book.id)}
+            onToggleOffline={(keep) => void toggleOffline(book, keep)}
             onEdit={() => setEditing(book)}
             onDelete={() => remove(book)}
           />
@@ -232,12 +270,18 @@ function BookItem({
   book,
   cover,
   view,
+  offline,
+  downloading,
+  onToggleOffline,
   onEdit,
   onDelete,
 }: {
   book: Book;
   cover?: string;
   view: View;
+  offline: boolean;
+  downloading: boolean;
+  onToggleOffline: (keep: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -281,6 +325,13 @@ function BookItem({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem
+                checked={offline}
+                disabled={downloading || book.readStatus !== "readable"}
+                onCheckedChange={onToggleOffline}
+              >
+                {downloading ? "Downloading…" : "Keep offline"}
+              </DropdownMenuCheckboxItem>
               <DropdownMenuItem onSelect={onEdit}>Rename or edit author</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
@@ -308,6 +359,12 @@ function BookItem({
           ) : (
             lastOpened(book)
           )}
+          {offline ? (
+            <span className="ml-auto flex items-center gap-0.5" data-testid="offline-badge">
+              <CloudDownloadIcon className="size-3" aria-hidden />
+              <span className="sr-only">Available offline</span>
+            </span>
+          ) : null}
         </p>
       </div>
     </div>

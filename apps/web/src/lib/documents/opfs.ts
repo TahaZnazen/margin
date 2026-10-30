@@ -30,6 +30,25 @@ export async function opfsRead(id: string): Promise<File | null> {
   }
 }
 
+/** Every cached PDF with its size in bytes. */
+export async function opfsList(): Promise<{ id: string; size: number }[]> {
+  const out: { id: string; size: number }[] = [];
+  try {
+    const folder = await dir(false);
+    if (!folder) return out;
+    // The DOM typings in TypeScript 5.9 lack the async iterator of directory handles.
+    const entries = folder as unknown as AsyncIterable<[string, FileSystemHandle]>;
+    for await (const [name, handle] of entries) {
+      if (handle.kind !== "file" || !name.endsWith(".pdf")) continue;
+      const file = await (handle as FileSystemFileHandle).getFile();
+      out.push({ id: name.slice(0, -4), size: file.size });
+    }
+  } catch {
+    // Unsupported or blocked: nothing is cached.
+  }
+  return out;
+}
+
 export async function opfsRemove(id: string): Promise<void> {
   try {
     await (await dir(false))?.removeEntry(`${id}.pdf`);
