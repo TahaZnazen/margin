@@ -8,6 +8,7 @@ const exts = /\.(tsx?|css|mdx?)$/;
 const allowed = [
   /packages\/ui\/src\/styles\/tokens\.css$/,
   /packages\/ui\/src\/highlight\//,
+  /packages\/ui\/src\/theme\/brand-colors\.ts$/,
   /\.test\.tsx?$/,
 ];
 const literal =

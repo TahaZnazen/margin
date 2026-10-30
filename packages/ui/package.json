@@ -15,6 +15,7 @@
     "./lib/*": "./src/lib/*.ts",
     "./hooks/*": "./src/hooks/*.ts",
     "./theme": "./src/theme/index.ts",
+    "./brand-colors": "./src/theme/brand-colors.ts",
     "./highlight": "./src/highlight/palette.ts"
   },
   "scripts": {

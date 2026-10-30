@@ -1,3 +1,4 @@
+import { brandColors } from "@margin/ui/brand-colors";
 import { Toaster } from "@margin/ui/components/sonner";
 import { TooltipProvider } from "@margin/ui/components/tooltip";
 import { ThemeScript, ThemeSync } from "@margin/ui/theme";
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2c5f5a",
+  themeColor: brandColors.accent,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
