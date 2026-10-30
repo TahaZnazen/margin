@@ -79,6 +79,7 @@ export function CommandPalette() {
   const router = useRouter();
   const { preference, setPreference } = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
+  const [selected, setSelected] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -92,12 +93,17 @@ export function CommandPalette() {
     };
   }, [open]);
 
+  // A page number in the box makes "Go to page N" the highlighted choice, so Enter jumps.
+  const page = pageFromQuery(query);
+  useEffect(() => {
+    if (page !== null) setSelected(`go to page ${page}`);
+  }, [page]);
+
   const run = (action: () => void) => {
     palette.close();
     // After the dialog closed, so focus returns to the page before the action moves it.
     setTimeout(action, 0);
   };
-  const page = pageFromQuery(query);
   const nextTheme =
     THEME_ORDER[(THEME_ORDER.indexOf(preference as never) + 1) % THEME_ORDER.length];
 
@@ -113,8 +119,10 @@ export function CommandPalette() {
             <DialogTitle>Command palette</DialogTitle>
             <DialogDescription>Search books, pages, chapters, notes and actions.</DialogDescription>
           </DialogHeader>
-          <Command loop>
+          <Command loop value={selected} onValueChange={setSelected}>
             <CommandInput
+              // Radix does not always move focus here (it stayed on the reader when opened by a key).
+              ref={(el) => el?.focus()}
               value={query}
               onValueChange={palette.setQuery}
               placeholder={
@@ -127,7 +135,7 @@ export function CommandPalette() {
             <CommandList className="max-h-80">
               <CommandEmpty>Nothing matches.</CommandEmpty>
               {reader && page !== null ? (
-                <CommandGroup heading="Go to">
+                <CommandGroup heading="Go to" forceMount>
                   <CommandItem
                     forceMount
                     value={`go to page ${page}`}

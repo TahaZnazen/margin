@@ -58,7 +58,9 @@ const ASSET_PREFIXES = ["/_next/static/", "/pdfjs/", "/@powersync/", "/icons/"];
 
 const serwist = new Serwist({
   skipWaiting: true,
-  clientsClaim: true,
+  // No clientsClaim: taking over a page mid-session (its workers, its uploads) is what flakes.
+  // The first visit is covered by the page-side warm-up; the next load is controlled.
+  clientsClaim: false,
   navigationPreload: false,
   disableDevLogs: true,
   runtimeCaching: [
