@@ -77,7 +77,7 @@ for (const scheme of ["light", "dark"] as const) {
 
       await page.goto("/app/settings");
       await expect(page.getByTestId("storage-section")).toBeVisible();
-      await expect(page.getByLabel("key", { exact: true })).toBeEnabled({ timeout: 15_000 });
+      await expect(page.getByLabel("Key idea", { exact: true })).toBeEnabled({ timeout: 15_000 });
       await audit(page, `settings ${scheme}`);
     });
   });
