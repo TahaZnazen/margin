@@ -45,8 +45,9 @@ async function highlight(page: Page, text: string, key: string) {
 }
 
 async function openHighlight(page: Page, color: string) {
-  await page.evaluate(() => document.querySelector(".mr-scroller")?.scrollTo(0, 0));
-  const box = await page.locator(`.mr-annot[data-color="${color}"]`).first().boundingBox();
+  const rect = page.locator(`.mr-annot[data-color="${color}"]`).first();
+  await rect.scrollIntoViewIfNeeded();
+  const box = await rect.boundingBox();
   if (!box) throw new Error(`no ${color} highlight`);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.getByTestId("annotation-popover")).toHaveAttribute("data-mode", "edit");
