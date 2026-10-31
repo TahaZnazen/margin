@@ -49,3 +49,11 @@ Left for later (see `docs/PROGRESS.md`): Lighthouse and performance runs, pinch-
 - **Deploy (put Margin online)**: needs you to create the production Supabase project and a second PowerSync instance, then connect Vercel. The steps are in the P12 entry of `docs/PROGRESS.md`; we can do them together.
 - **Lock sign-ups** if not done yet: `ALLOW_SIGNUPS=false` in `apps/web/.env.local`, and Supabase → Authentication → Sign In / Providers → turn off "Allow new users to sign up".
 - **Try it**: restart `pnpm dev`, and on your phone later (after deploy) check that pinch-zoom and install work.
+
+## Run 2: competitor gap analysis
+
+- ✅ **Done.** Report: `docs/research/R01-competitor-gaps.md`. It opens with a plain summary and the top 10 features to add, then a feature matrix of Margin vs 10 apps (LiquidText, MarginNote 4, Highlights, PDF Expert, Readwise Reader, Kindle, Apple Books, Zotero 7, Acrobat Reader, RemNote) and recommendations in four buckets. Screenshots of every screen (desktop + phone) are in `evidence/r01/`.
+- Biggest gaps found while using the live app: no search inside a book (the code exists but isn't switched on), links inside PDFs aren't clickable, no "time left" or reading status, no page that shows all highlights across books, and two-column papers are too small on a phone.
+- **"Mark chapter as done"**: no competitor has it. Full design in the report (§5.5): checks in the chapter list, "Done & next" at the end of a chapter, "4 of 12 chapters" in the library. It needs one new table, so ADR 0004 comes first.
+- The temporary `e2e-review-*` account and its 4 uploaded files were deleted; a database query shows none left. Your account and data were not touched. The test browser had a saved session (likely yours), so the walkthrough ran in a separate, clean browser window.
+- **Needs you:** pick what to build next. The report has ready-to-expand prompt stubs (Q1–Q5 quick wins, C1 chapters). C1 needs you to approve ADR 0004 (a new `chapter_progress` table) before any code.
