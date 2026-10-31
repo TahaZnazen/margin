@@ -16,6 +16,11 @@ describe("paceSecondsPerPage", () => {
     expect(paceSecondsPerPage(600, 2)).toBeNull();
     expect(paceSecondsPerPage(119, 10)).toBeNull();
   });
+  it("is null when the implied pace is implausibly fast (jumped ahead, started mid-book)", () => {
+    expect(paceSecondsPerPage(180, 200)).toBeNull();
+    expect(paceSecondsPerPage(300, 31)).toBeNull();
+    expect(paceSecondsPerPage(300, 30)).toBe(10);
+  });
   it("is seconds per page once both thresholds pass", () => {
     expect(paceSecondsPerPage(120, 3)).toBe(40);
   });
@@ -58,6 +63,11 @@ describe("libraryProgressLine", () => {
   it("shows page and percent without a pace", () => {
     expect(libraryProgressLine({ page: 4, pageCount: 9, percent: 50, secondsRead: 30 })).toBe(
       "p. 5 of 9 · 50 %",
+    );
+  });
+  it("drops time left (keeps page and percent) after jumping far ahead", () => {
+    expect(libraryProgressLine({ page: 400, pageCount: 500, percent: 80, secondsRead: 300 })).toBe(
+      "p. 401 of 500 · 80 %",
     );
   });
   it("adds time left with a pace", () => {

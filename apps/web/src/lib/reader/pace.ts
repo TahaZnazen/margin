@@ -3,18 +3,24 @@
 /** No estimate until the reader has gone this far and spent this long. */
 export const MIN_PAGES_ADVANCED = 3;
 export const MIN_SECONDS_READ = 120;
+/**
+ * A pace faster than this is not reading: the reader jumped ahead (chapter link, slider), started
+ * in the middle, or skimmed. Showing "time left" from it would be far too optimistic, so show none.
+ */
+export const MIN_SECONDS_PER_PAGE = 10;
 
 /** The page being read counts as half unread. */
 const CURRENT_PAGE_LEFT = 0.5;
 
 /**
  * Seconds per page, from the time spent reading and the pages advanced (0-based current page).
- * Null until there is enough data to trust (3+ pages and 2+ minutes).
+ * Null until there is enough data to trust (3+ pages, 2+ minutes) or when the implied pace is implausibly fast (under 10 s per page).
  */
 export function paceSecondsPerPage(secondsRead: number, page: number): number | null {
   if (!Number.isFinite(secondsRead) || !Number.isFinite(page)) return null;
   if (page < MIN_PAGES_ADVANCED || secondsRead < MIN_SECONDS_READ) return null;
-  return secondsRead / page;
+  const pace = secondsRead / page;
+  return pace < MIN_SECONDS_PER_PAGE ? null : pace;
 }
 
 /** Seconds to read the rest of the current page and every page after it, to the end of the book; null without a pace. */
