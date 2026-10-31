@@ -21,6 +21,10 @@ export interface Book {
   annotationsImportedAt: string | null;
   /** 0 to 100, from reading_state. */
   percent: number;
+  /** 0-based page from reading_state; null = never read. */
+  readingPage: number | null;
+  /** Seconds actually read (visible and active). */
+  secondsRead: number;
 }
 
 export interface NewBook {

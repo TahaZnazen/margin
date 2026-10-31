@@ -139,3 +139,10 @@ Each prompt in `prompts/` appends an entry here when it finishes, newest last. L
 **Follow-ups:**
 - The `/` key also opens find (the viewer already did); it is not listed in the `?` sheet yet.
 - Find does not search while the book has no text layer (scans); OCR search belongs with WP-24.
+
+## Q2 — Time left and page numbers · 2026-10-31 · branch q2-time-left
+**Built:** The library card shows "p. 5 of 9 · 38 % · about 6 min left" under the progress bar (the bar keeps `aria-label="Reading progress"`). The Chapters sidebar shows each row's first page ("p. 4", the same page the palette's chapter list shows) and "N min left" under the current chapter; the header chapter line adds "· N min left in chapter" from the `lg` breakpoint up. Pace = seconds read ÷ pages advanced, only after 3+ pages and 2+ minutes; the page being read counts as half unread; "under 1 min", "N min" (rounded), "N h". Nothing shows for a book never read or still on page 1. The reader refreshes the shown pace every 15 active seconds so it does not re-render every second.
+**Key files:** `apps/web/src/lib/reader/pace.ts` (+ `pace.test.ts`), `lib/documents/{documents-repo,powersync-documents-repo}.ts` (`Book.readingPage`, `Book.secondsRead`; query selects `MAX(page)`, `MAX(seconds_read)`), `app/app/library-view.tsx`, `reader-sidebar.tsx`, `reader-client.tsx`, `apps/web/e2e/time-left.spec.ts`.
+**Commands:** `ALLOW_SIGNUPS=false pnpm e2e -- time-left` (2 tests, fake clock; screenshots in `evidence/q2-time-left/`).
+**Deviations from the prompt or docs:** The saved page is the page at the top of the viewport, so after a jump the card can show one page less than the reader's indicator (E2E accepts p. 4 or 5). Pages advanced = current 0-based page (a jump ahead inflates the speed).
+**Follow-ups:** The viewer clears its 300 ms position debounce on unmount, so leaving within 300 ms of the last scroll can drop that position (pre-existing).

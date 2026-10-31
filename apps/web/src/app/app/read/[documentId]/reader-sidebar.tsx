@@ -8,6 +8,7 @@ import { ChevronRightIcon, LinkIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
 import { pageLink } from "@/lib/reader/chapters";
+import { formatDuration, secondsLeftInRange } from "@/lib/reader/pace";
 
 export type SidebarTab = "chapters" | "pages" | "bookmarks";
 export const SIDEBAR_TABS: readonly SidebarTab[] = ["chapters", "pages", "bookmarks"];
@@ -45,6 +46,9 @@ export interface ReaderSidebarProps {
   doc: ReaderDocument | null;
   /** 0-based current page. */
   page: number;
+  pageCount: number;
+  /** Seconds per page once there is enough reading data; null before. */
+  secPerPage: number | null;
   bookmarks: readonly Annotation[];
   onGoTo: (page: number, offsetPt?: number) => void;
   onBookmark: (id: string) => void;
@@ -112,8 +116,10 @@ function Chapters({
   detected,
   scanning,
   page,
+  pageCount,
   onGoTo,
   onTab,
+  secPerPage,
 }: ReaderSidebarProps) {
   const rows = useMemo(() => rowsOf(outline), [outline]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -129,6 +135,16 @@ function Chapters({
     }
     return found;
   }, [rows, page]);
+
+  // Time left in the current entry: up to the next entry that starts on a later page.
+  const chapterLeft = useMemo(() => {
+    const idx = rows.findIndex((r) => r.key === currentKey);
+    const cur = rows[idx]?.item.page;
+    if (cur === undefined || secPerPage == null) return null;
+    const end = rows.slice(idx + 1).find((r) => (r.item.page ?? -1) > cur)?.item.page ?? pageCount;
+    const left = secondsLeftInRange(secPerPage, page, end);
+    return left === null ? null : `${formatDuration(left)} left`;
+  }, [rows, currentKey, page, pageCount, secPerPage]);
 
   // Ancestors of the current entry stay open, so it is always visible.
   const forced = useMemo(() => {
@@ -239,7 +255,23 @@ function Chapters({
                     onClick={() => target !== undefined && onGoTo(target, r.item.offsetPt)}
                   >
                     {r.item.title || "Untitled"}
+                    {isCurrent && chapterLeft ? (
+                      <span
+                        className="block font-normal text-muted-foreground text-xs"
+                        data-testid="chapter-time-left"
+                      >
+                        {chapterLeft}
+                      </span>
+                    ) : null}
                   </button>
+                  {target !== undefined ? (
+                    <span
+                      className="mt-2 shrink-0 text-muted-foreground text-xs tabular-nums"
+                      data-testid="chapter-page"
+                    >
+                      p. {target + 1}
+                    </span>
+                  ) : null}
                   {target !== undefined ? (
                     <button
                       type="button"

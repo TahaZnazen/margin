@@ -23,6 +23,8 @@ type Row = {
   created_at: string;
   annotations_imported_at: string | null;
   percent?: number | null;
+  reading_page?: number | null;
+  seconds_read?: number | null;
 };
 
 const COLUMNS =
@@ -43,11 +45,13 @@ const toBook = (row: Row): Book => ({
   createdAt: row.created_at,
   annotationsImportedAt: row.annotations_imported_at,
   percent: row.percent ?? 0,
+  readingPage: row.reading_page ?? null,
+  secondsRead: row.seconds_read ?? 0,
 });
 
-const SELECT = `SELECT ${COLUMNS}, COALESCE(rs.percent, 0) AS percent
+const SELECT = `SELECT ${COLUMNS}, COALESCE(rs.percent, 0) AS percent, rs.reading_page AS reading_page, COALESCE(rs.seconds_read, 0) AS seconds_read
   FROM documents d
-  LEFT JOIN (SELECT document_id, MAX(percent) AS percent FROM reading_state WHERE deleted_at IS NULL GROUP BY document_id) rs ON rs.document_id = d.id
+  LEFT JOIN (SELECT document_id, MAX(percent) AS percent, MAX(page) AS reading_page, MAX(seconds_read) AS seconds_read FROM reading_state WHERE deleted_at IS NULL GROUP BY document_id) rs ON rs.document_id = d.id
   WHERE d.deleted_at IS NULL`;
 
 /** `DocumentsRepo` over the local PowerSync database: reads are local, writes sync in the background. */

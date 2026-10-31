@@ -35,6 +35,7 @@ import type { Book } from "@/lib/documents/documents-repo";
 import { keepOffline } from "@/lib/documents/offline";
 import { opfsList, opfsRemove } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
+import { libraryProgressLine } from "@/lib/reader/pace";
 import { useUploads } from "./upload-provider";
 
 type Sort = "recent" | "title" | "progress";
@@ -286,6 +287,12 @@ function BookItem({
   onDelete: () => void;
 }) {
   const grid = view === "grid";
+  const progressLine = libraryProgressLine({
+    page: book.readingPage,
+    pageCount: book.pageCount,
+    percent: book.percent,
+    secondsRead: book.secondsRead,
+  });
   return (
     <div
       data-testid="book"
@@ -349,6 +356,11 @@ function BookItem({
         >
           <div className="h-full bg-primary" style={{ width: `${book.percent}%` }} />
         </div>
+        {progressLine ? (
+          <p className="mt-1 truncate text-muted-foreground text-xs" data-testid="book-progress">
+            {progressLine}
+          </p>
+        ) : null}
         <p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs">
           {book.readStatus === "failed" ? (
             <>

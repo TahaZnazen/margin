@@ -64,6 +64,7 @@ import {
   nextChapterAtEnd,
   pageFromHash,
 } from "@/lib/reader/chapters";
+import { formatDuration, paceSecondsPerPage, secondsLeftInRange } from "@/lib/reader/pace";
 import { FindBar } from "./find-bar";
 import { ReaderSidebar, SIDEBAR_TABS, type SidebarTab } from "./reader-sidebar";
 import { SidePanel } from "./side-panel";
@@ -333,6 +334,7 @@ function ReaderHeader({
   title,
   chapter,
   chapterProgress,
+  chapterLeft,
   sidebarOpen,
   onToggleSidebar,
   actions,
@@ -342,6 +344,8 @@ function ReaderHeader({
   title: string;
   chapter?: string;
   chapterProgress?: number;
+  /** "8 min": time left in the chapter, when the pace is known. */
+  chapterLeft?: string;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   actions?: React.ReactNode;
@@ -390,6 +394,12 @@ function ReaderHeader({
             data-testid="chapter-title"
           >
             {chapter}
+            {chapterLeft ? (
+              <span className="hidden lg:inline" data-testid="chapter-time-left-header">
+                {" "}
+                · {chapterLeft} left in chapter
+              </span>
+            ) : null}
           </p>
         ) : null}
       </div>
@@ -416,6 +426,9 @@ function ReaderHeader({
     </header>
   );
 }
+
+/** How often (in active seconds) the shown pace is refreshed, so the reader doesn't re-render every second. */
+const PACE_REFRESH_EVERY = 15;
 
 const SIDEBAR_KEY = "margin.reader.sidebar";
 const derivedCache = new Map<string, OutlineItem[]>();
@@ -501,6 +514,7 @@ function Reading({
   const position = useRef<ReaderPosition | null>(null);
   const pageCount = useRef(0);
   const seconds = useRef(initialSeconds);
+  const [secondsShown, setSecondsShown] = useState(initialSeconds);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastActive = useRef(Date.now());
@@ -544,6 +558,7 @@ function Reading({
       if (Date.now() - lastActive.current > ACTIVE_WINDOW_MS) return;
       seconds.current += 1;
       ticks += 1;
+      if (ticks % PACE_REFRESH_EVERY === 0) setSecondsShown(seconds.current);
       if (ticks % SECONDS_FLUSH_EVERY === 0) schedule();
     }, 1000);
     const onHide = () => flush();
@@ -609,6 +624,13 @@ function Reading({
   const chapter = chapters[chapterIdx];
   const chapterFraction = chapterProgress(chapters, chapterIdx, page, pageTotal);
   const upNext = nextChapterAtEnd(chapters, chapterIdx, page);
+  const secPerPage = paceSecondsPerPage(secondsShown, page);
+  const chapterEnd =
+    chapterIdx >= 0
+      ? (chapters.slice(chapterIdx + 1).find((c) => c.page > (chapters[chapterIdx]?.page ?? 0))
+          ?.page ?? pageTotal)
+      : pageTotal;
+  const chapterLeft = secondsLeftInRange(secPerPage, page, chapterEnd);
 
   const sidebarOpen = narrow ? sheetOpen : sidebarPrefs.open;
   const setSidebarOpen = useCallback(
@@ -798,6 +820,8 @@ function Reading({
       scanning={scanning || (!hasOutline && derived === null)}
       doc={doc}
       page={page}
+      pageCount={pageTotal}
+      secPerPage={secPerPage}
       bookmarks={layer.bookmarks}
       onGoTo={goTo}
       onBookmark={(id) => {
@@ -919,6 +943,7 @@ function Reading({
         title={book.title}
         chapter={chapter?.title}
         chapterProgress={chapter ? chapterFraction : undefined}
+        chapterLeft={chapter && chapterLeft !== null ? formatDuration(chapterLeft) : undefined}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         actions={actions}
