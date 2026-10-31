@@ -281,3 +281,29 @@
     scroll-behavior: auto;
   }
 }
+
+/* Links: real controls laid over the page; the viewer hit-tests mouse clicks so text still selects. */
+.mr-links {
+  pointer-events: none;
+}
+
+.mr-link {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.mr-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.mr-viewer.mr-over-link .mr-textlayer,
+.mr-viewer.mr-over-link .mr-textlayer > span {
+  cursor: pointer;
+}

@@ -10,6 +10,7 @@ export {
   deriveTitle,
 } from "./derive-outline";
 export * from "./engine";
+export { externalLinkLabel, internalLinkLabel, safeExternalUrl } from "./links";
 export { pdfJsEngine } from "./pdfjs-engine";
 export {
   buildPageText,
@@ -29,6 +30,7 @@ export type { OverlayContext } from "./viewer/PageSlot";
 export {
   CSS_UNITS,
   type FindState,
+  type LinkPosition,
   MAX_ZOOM,
   MIN_ZOOM,
   PdfViewer,

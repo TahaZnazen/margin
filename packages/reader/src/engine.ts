@@ -63,6 +63,17 @@ export interface SearchHit {
   end: number;
 }
 
+/** Where a link in the PDF points. External URLs are already limited to http, https and mailto. */
+export type LinkTarget =
+  | { kind: "internal"; pageIndex: number; offsetPt?: number }
+  | { kind: "external"; url: string };
+
+/** A clickable link: `rect` in page coordinates like the rest of the model. */
+export interface PageLink {
+  rect: Rect;
+  target: LinkTarget;
+}
+
 export type PasswordReason = "need" | "incorrect";
 
 export interface OpenOptions {
@@ -112,6 +123,12 @@ export interface ReaderDocument {
   /** Case- and diacritic-insensitive; hits arrive page by page, in reading order. */
   search(query: string, signal?: AbortSignal): AsyncIterable<SearchHit>;
   outline(): Promise<OutlineItem[]>;
+  /**
+   * Link annotations of a page whose target we follow: destinations inside the document and
+   * http/https/mailto URLs. JavaScript actions, `javascript:` URIs and every other action type are
+   * left out, so nothing in the PDF can run or navigate on its own.
+   */
+  links(pageIndex: number): Promise<PageLink[]>;
   title(): Promise<string | undefined>;
   author(): Promise<string | undefined>;
   /** Frees the memory the engine holds for a page that scrolled far away. */

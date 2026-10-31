@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import {
+  type LinkTarget,
   type OutlineItem,
   type PageGeometry,
   type PasswordReason,
@@ -64,12 +65,22 @@ export interface ViewerState {
   find: FindState;
 }
 
+/** A place in the document: 0-based page and distance from its top in points. */
+export interface LinkPosition {
+  page: number;
+  offsetPt: number;
+}
+
 export type ShortcutName = "find" | "goto" | "theme" | "help";
 
 export interface PdfViewerHandle {
   goToPage: (page: number, offsetPt?: number) => void;
   /** Scrolls so a rect (page points, unrotated) sits a little below the top, whatever the rotation. */
   goToRect: (page: number, rect: Rect) => void;
+  /** Scrolls so exactly this point is at the top of the viewport (used to return from a link jump). */
+  goToPosition: (page: number, offsetPt: number) => void;
+  /** Where the top of the viewport is now. */
+  currentPosition: () => LinkPosition;
   setZoom: (zoom: ZoomSpec) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -97,6 +108,8 @@ export interface PdfViewerProps {
   onFirstPage?: (ms: number) => void;
   /** Keys the viewer does not own; the host decides what they do. */
   onShortcut?: (name: ShortcutName) => void;
+  /** Called after the viewer followed an internal link, with the place it left and the place it landed. */
+  onLinkJump?: (jump: { from: LinkPosition; to: LinkPosition }) => void;
   /** Per-page overlay slot for annotations (P09). Rendered above the canvas, below the text. */
   renderPageOverlay?: (ctx: OverlayContext) => ReactNode;
   /** Dark theme: invert the page instead of only dimming it. */
@@ -132,6 +145,7 @@ export function PdfViewer({
   onError,
   onFirstPage,
   onShortcut,
+  onLinkJump,
   renderPageOverlay,
   invertInDark,
   className,
@@ -168,8 +182,16 @@ export function PdfViewer({
     onSelection,
     onFirstPage,
     onShortcut,
+    onLinkJump,
   });
-  callbacks.current = { onPositionChange, onStateChange, onSelection, onFirstPage, onShortcut };
+  callbacks.current = {
+    onPositionChange,
+    onStateChange,
+    onSelection,
+    onFirstPage,
+    onShortcut,
+    onLinkJump,
+  };
   const findAbort = useRef<AbortController | null>(null);
   const hitsRef = useRef(hits);
   hitsRef.current = hits;
@@ -499,6 +521,83 @@ export function PdfViewer({
     [geomOf, goToPage, pageCount],
   );
 
+  const goToPosition = useCallback(
+    (target: number, offsetPt: number) => {
+      const el = scroller.current;
+      if (!el || !pageCount) return;
+      const p = clamp(Math.round(target), 0, pageCount - 1);
+      anchor.current = { page: p, offsetPt, dy: 0 };
+      el.scrollTop = clamp(
+        (layout.tops[p] as number) + offsetPt * scale,
+        0,
+        Math.max(0, layout.height - el.clientHeight),
+      );
+    },
+    [layout, scale, pageCount],
+  );
+
+  // Links. Mouse: the text layer sits above the link boxes (so dragging selects), so clicks and
+  // hovers are hit-tested by hand, and a highlight under the pointer wins over a link.
+  const linkAt = useCallback((x: number, y: number): HTMLElement | null => {
+    const el = scroller.current;
+    if (!el) return null;
+    const under = document.elementFromPoint(x, y);
+    const pageEl = under?.closest<HTMLElement>(".mr-page");
+    if (!pageEl) return null;
+    const inside = (r: DOMRect) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    let best: { el: HTMLElement; area: number } | null = null;
+    for (const box of pageEl.querySelectorAll<HTMLElement>(".mr-link")) {
+      const r = box.getBoundingClientRect();
+      const area = r.width * r.height;
+      if (inside(r) && (!best || area < best.area)) best = { el: box, area };
+    }
+    if (!best) return null;
+    for (const mark of pageEl.querySelectorAll<HTMLElement>(".mr-annot")) {
+      if (inside(mark.getBoundingClientRect())) return null;
+    }
+    return best.el;
+  }, []);
+
+  const followLink = useCallback(
+    (target: LinkTarget) => {
+      if (target.kind !== "internal") return;
+      const from = { page: anchor.current.page, offsetPt: anchor.current.offsetPt };
+      const to = {
+        page: clamp(target.pageIndex, 0, Math.max(pageCount - 1, 0)),
+        offsetPt: target.offsetPt ?? 0,
+      };
+      goToPage(to.page, to.offsetPt);
+      scroller.current?.focus({ preventScroll: true });
+      callbacks.current.onLinkJump?.({ from, to });
+    },
+    [goToPage, pageCount],
+  );
+
+  const pointerDown = useRef<{ x: number; y: number } | null>(null);
+  const hoverFrame = useRef(0);
+  const onLinkPointerDown = (event: React.PointerEvent) => {
+    pointerDown.current = { x: event.clientX, y: event.clientY };
+  };
+  const onLinkClick = (event: React.MouseEvent) => {
+    const down = pointerDown.current;
+    pointerDown.current = null;
+    if (event.button !== 0 || event.detail > 1) return;
+    if (event.target instanceof Element && event.target.closest(".mr-link, [data-annot-popover]"))
+      return;
+    // A drag (even a short one that selects a few characters) is a selection, not a click.
+    if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4) return;
+    if (document.getSelection()?.isCollapsed === false) return;
+    linkAt(event.clientX, event.clientY)?.click();
+  };
+  const onLinkPointerMove = (event: React.PointerEvent) => {
+    if (event.buttons !== 0 || event.pointerType === "touch") return;
+    const { clientX: x, clientY: y } = event;
+    cancelAnimationFrame(hoverFrame.current);
+    hoverFrame.current = requestAnimationFrame(() => {
+      root.current?.classList.toggle("mr-over-link", linkAt(x, y) !== null);
+    });
+  };
+
   const chapters = useMemo(() => flattenOutline(outline), [outline]);
   const jumpChapter = useCallback(
     (dir: 1 | -1) => {
@@ -575,6 +674,11 @@ export function PdfViewer({
     () => ({
       goToPage,
       goToRect,
+      goToPosition,
+      currentPosition: () => ({
+        page: anchor.current.page,
+        offsetPt: anchor.current.offsetPt,
+      }),
       setZoom: (z) => applyZoom(z),
       zoomIn: () => stepZoom(1),
       zoomOut: () => stepZoom(-1),
@@ -586,7 +690,7 @@ export function PdfViewer({
       prevChapter: () => jumpChapter(-1),
       focus: () => scroller.current?.focus(),
     }),
-    [goToPage, goToRect, applyZoom, stepZoom, runFind, stepFind, jumpChapter],
+    [goToPage, goToRect, goToPosition, applyZoom, stepZoom, runFind, stepFind, jumpChapter],
   );
 
   // Keyboard.
@@ -844,6 +948,7 @@ export function PdfViewer({
           hits={hitsByPage.get(i)}
           renderOverlay={renderPageOverlay}
           onPainted={onPainted}
+          onLink={followLink}
         />,
       );
     }
@@ -859,6 +964,7 @@ export function PdfViewer({
       data-zoom-percent={percent}
       data-invert={invertInDark ? "true" : undefined}
     >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the click only follows a link; every link box is a real button or anchor that keys activate */}
       <section
         className="mr-scroller"
         ref={scroller}
@@ -866,6 +972,9 @@ export function PdfViewer({
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be focusable for keyboard scrolling
         tabIndex={0}
         aria-label="Document pages"
+        onPointerDownCapture={onLinkPointerDown}
+        onPointerMove={onLinkPointerMove}
+        onClick={onLinkClick}
       >
         <div className="mr-pages" style={{ width: layout.contentWidth, height: layout.height }}>
           {pages}

@@ -10,6 +10,7 @@ import type {
   OpenOptions,
   OutlineItem,
   PageGeometry,
+  PageLink,
   PageText,
   ReaderDocument,
   ReaderEngine,
@@ -18,6 +19,7 @@ import type {
   SearchHit,
 } from "./engine";
 import { ReaderError } from "./engine";
+import { safeExternalUrl } from "./links";
 import { findInText, pageTextFromContent } from "./text";
 
 type PdfJs = typeof import("pdfjs-dist");
@@ -32,6 +34,15 @@ function loadLib(assetBaseUrl: string): Promise<PdfJs> {
     return lib;
   });
   return libPromise;
+}
+
+/** The parts of a PDF.js annotation we read (the library types them as `any`). */
+interface RawLink {
+  subtype?: string;
+  rect?: number[];
+  dest?: string | unknown[] | null;
+  url?: string | null;
+  unsafeUrl?: string;
 }
 
 const rotationOf = (value: number): Rotation => (((value % 360) + 360) % 360) as Rotation;
@@ -69,6 +80,7 @@ class PdfJsDocument implements ReaderDocument {
   readonly #pages = new Map<number, Promise<PDFPageProxy>>();
   readonly #geometry = new Map<number, Promise<PageGeometry>>();
   readonly #text = new Map<number, Promise<PageText>>();
+  readonly #links = new Map<number, Promise<PageLink[]>>();
   #fingerprint: Promise<string> | null = null;
 
   constructor(lib: PdfJs, pdf: PDFDocumentProxy, bytes: Uint8Array) {
@@ -189,6 +201,47 @@ class PdfJsDocument implements ReaderDocument {
     } catch {
       return {};
     }
+  }
+
+  links(index: number): Promise<PageLink[]> {
+    let links = this.#links.get(index);
+    if (!links) {
+      links = this.#loadLinks(index).catch(() => []);
+      this.#links.set(index, links);
+    }
+    return links;
+  }
+
+  async #loadLinks(index: number): Promise<PageLink[]> {
+    const page = await this.#page(index);
+    const annotations = await page.getAnnotations({ intent: "display" });
+    const [x0 = 0, , , y1 = 0] = page.view as number[];
+    const out: PageLink[] = [];
+    for (const a of annotations as RawLink[]) {
+      if (a.subtype !== "Link" || !Array.isArray(a.rect) || a.rect.length < 4) continue;
+      const [ax, ay, bx, by] = a.rect as [number, number, number, number];
+      const rect: [number, number, number, number] = [
+        Math.min(ax, bx) - x0,
+        y1 - Math.max(ay, by),
+        Math.max(ax, bx) - x0,
+        y1 - Math.min(ay, by),
+      ];
+      if (!(rect[2] - rect[0] > 0.5 && rect[3] - rect[1] > 0.5)) continue;
+      if (a.dest) {
+        const target = await this.#resolveDest(a.dest);
+        if (target.page !== undefined)
+          out.push({
+            rect,
+            target: { kind: "internal", pageIndex: target.page, offsetPt: target.offsetPt },
+          });
+        continue;
+      }
+      // `url` is PDF.js's sanitized value; `unsafeUrl` is the raw string. We check the raw one too.
+      const url = safeExternalUrl(a.url ?? a.unsafeUrl);
+      if (url && safeExternalUrl(a.unsafeUrl ?? a.url))
+        out.push({ rect, target: { kind: "external", url } });
+    }
+    return out;
   }
 
   async title(): Promise<string | undefined> {

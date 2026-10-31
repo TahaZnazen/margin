@@ -67,6 +67,16 @@ import {
   pageFromHash,
 } from "@/lib/reader/chapters";
 import { copyRich } from "@/lib/reader/citation";
+import {
+  emptyHistory,
+  farFromLanding,
+  goBack,
+  goForward,
+  type NavHistory,
+  type NavPos,
+  PILL_MS,
+  pushJump,
+} from "@/lib/reader/nav-history";
 import { formatDuration, paceSecondsPerPage, secondsLeftInRange } from "@/lib/reader/pace";
 import { FindBar } from "./find-bar";
 import { ReaderSidebar, SIDEBAR_TABS, type SidebarTab } from "./reader-sidebar";
@@ -608,6 +618,55 @@ function Reading({
     };
   }, [flush, schedule]);
 
+  // Links inside the PDF: a jump remembers where it left from; the "Back to p. N" pill returns there.
+  const navRef = useRef<NavHistory>(emptyHistory);
+  const [pill, setPill] = useState<{ from: NavPos; landing: number } | null>(null);
+  const pillShown = useRef(false);
+  pillShown.current = pill !== null;
+  const onLinkJump = useCallback(({ from, to }: { from: NavPos; to: NavPos }) => {
+    navRef.current = pushJump(navRef.current, from);
+    setPill({ from, landing: to.page });
+  }, []);
+  const stepHistory = useCallback((dir: "back" | "forward") => {
+    const v = viewer.current;
+    if (!v) return false;
+    const step = (dir === "back" ? goBack : goForward)(navRef.current, v.currentPosition());
+    if (!step) return false;
+    navRef.current = step.history;
+    v.goToPosition(step.target.page, step.target.offsetPt);
+    setPill(null);
+    return true;
+  }, []);
+  useEffect(() => {
+    if (!pill) return;
+    const timer = setTimeout(() => setPill(null), PILL_MS);
+    return () => clearTimeout(timer);
+  }, [pill]);
+  const shownPage = state?.page ?? 0;
+  useEffect(() => {
+    if (pill && farFromLanding(pill.landing, shownPage)) setPill(null);
+  }, [pill, shownPage]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && pillShown.current) {
+        setPill(null);
+        return;
+      }
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+      )
+        return;
+      // Only claim the key when there is somewhere to go; otherwise the browser's own history works.
+      if (stepHistory(e.key === "ArrowLeft" ? "back" : "forward")) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [stepHistory]);
+
   // Esc: note what was open BEFORE the annotation layer (registered next) and Radix react to the
   // key, so focus mode only leaves when nothing nearer was there to close.
   const popoverShown = useRef(false);
@@ -617,6 +676,7 @@ function Reading({
       if (e.key !== "Escape") return;
       escapeHadTarget.current =
         popoverShown.current ||
+        pillShown.current ||
         !!document.querySelector(
           '[role="dialog"]:not([data-state="closed"]), [role="menu"]:not([data-state="closed"])',
         );
@@ -1143,6 +1203,7 @@ function Reading({
               setState(s);
             }}
             onFirstPage={setFirstPageMs}
+            onLinkJump={onLinkJump}
             onDocumentLoad={(d, items) => {
               setDoc(d);
               setOutline(items);
@@ -1174,6 +1235,21 @@ function Reading({
             >
               Not saved yet. Retrying…
             </output>
+          ) : null}
+          {pill ? (
+            <button
+              type="button"
+              data-testid="back-pill"
+              title="Back (Alt+Left)"
+              className="absolute bottom-14 left-4 z-10 flex min-h-9 items-center gap-1.5 rounded-full border bg-card/95 px-3 py-1 text-muted-foreground text-xs shadow-md hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => {
+                stepHistory("back");
+                viewer.current?.focus();
+              }}
+            >
+              <ArrowLeftIcon className="size-3.5 shrink-0" />
+              <span>Back to p. {pill.from.page + 1}</span>
+            </button>
           ) : null}
           {upNext ? (
             <button

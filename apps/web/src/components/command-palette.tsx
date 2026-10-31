@@ -332,6 +332,7 @@ const SHORTCUTS: { group: string; rows: [string[], string][] }[] = [
       [["PageDown", "PageUp"], "Next / previous page (also Right / Left)"],
       [["Home", "End"], "First / last page"],
       [["G"], "Go to page"],
+      [["Alt", "Left"], "Back after following a link in the PDF (Alt+Right: forward)"],
       [["Ctrl/Cmd", "F"], "Find in this book (again: the browser's find)"],
       [["Enter", "Shift+Enter"], "In the find box: next / previous match"],
       [["+", "-", "0"], "Zoom in / out / fit width"],
