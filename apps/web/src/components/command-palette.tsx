@@ -24,6 +24,7 @@ import {
   HashIcon,
   HighlighterIcon,
   KeyboardIcon,
+  LibraryIcon,
   ListIcon,
   NotebookPenIcon,
   PaletteIcon,
@@ -42,6 +43,8 @@ import { useAllHighlights } from "@/lib/annotations/use-all-highlights";
 import { palette, usePalette } from "@/lib/commands/store";
 import type { Book } from "@/lib/documents/documents-repo";
 import { services } from "@/lib/documents/services";
+import { selectShelf } from "@/lib/shelves/logic";
+import { useShelves } from "@/lib/shelves/use-shelves";
 
 const THEME_ORDER = ["system", "light", "sepia", "dark"] as const;
 
@@ -116,6 +119,7 @@ export function CommandPalette() {
   // with its own chapters for Enter.
   const openBookId = pathname.match(/^\/app\/read\/([^/]+)/)?.[1];
   const otherBooks = books.filter((b) => b.id !== openBookId);
+  const shelves = useShelves()?.shelves ?? [];
   const [selected, setSelected] = useState("");
   // Outside a book, typing searches the highlights of every book (capped).
   const globalHits = useGlobalHighlightHits(open && !reader, query);
@@ -318,6 +322,26 @@ export function CommandPalette() {
                       <HighlighterIcon />
                       <span className="truncate">{a.quote || a.comment || "Bookmark"}</span>
                       <CommandShortcut>p. {a.page + 1}</CommandShortcut>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ) : null}
+              {shelves.length > 0 ? (
+                <CommandGroup heading="Shelves">
+                  {shelves.map((shelf) => (
+                    <CommandItem
+                      key={shelf.id}
+                      value={`go to shelf ${shelf.name} ${shelf.id}`}
+                      data-testid="palette-shelf"
+                      onSelect={() =>
+                        run(() => {
+                          selectShelf(shelf.id);
+                          if (pathname !== "/app") router.push("/app");
+                        })
+                      }
+                    >
+                      <LibraryIcon />
+                      <span className="truncate">Go to shelf {shelf.name}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>

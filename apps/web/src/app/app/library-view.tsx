@@ -36,6 +36,18 @@ import { keepOffline } from "@/lib/documents/offline";
 import { opfsList, opfsRemove } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { libraryProgressLine } from "@/lib/reader/pace";
+import {
+  ALL_BOOKS,
+  filterByShelf,
+  onShelfSelected,
+  readSelectedShelf,
+  selectShelf,
+  shelfCounts,
+  shelvesOfBook,
+} from "@/lib/shelves/logic";
+import type { Shelf } from "@/lib/shelves/shelves-repo";
+import { useShelves } from "@/lib/shelves/use-shelves";
+import { BookShelvesDialog, ShelfBar, ShelfNameDialog } from "./shelf-bar";
 import { useUploads } from "./upload-provider";
 
 type Sort = "recent" | "title" | "progress";
@@ -69,7 +81,21 @@ export function LibraryView() {
   // Books whose PDF is stored on this device (opened once, or "Keep offline").
   const [offlineIds, setOfflineIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState<Set<string>>(new Set());
+  const shelfData = useShelves();
+  const shelves = shelfData?.shelves;
+  const links = shelfData?.links;
+  const [selectedShelf, setSelectedShelf] = useState(ALL_BOOKS);
+  const [nameDialog, setNameDialog] = useState<
+    { kind: "new" } | { kind: "rename"; shelf: Shelf } | null
+  >(null);
+  const [shelvesFor, setShelvesFor] = useState<Book | null>(null);
   const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  // The chosen shelf is remembered per device; the command palette can switch it too.
+  useEffect(() => {
+    setSelectedShelf(readSelectedShelf());
+    return onShelfSelected(setSelectedShelf);
+  }, []);
 
   // Bumps when documents change on another device or tab.
   const [syncTick, setSyncTick] = useState(0);
@@ -124,8 +150,33 @@ export function LibraryView() {
     const filtered = (books ?? []).filter(
       (b) => !q || b.title.toLowerCase().includes(q) || (b.author ?? "").toLowerCase().includes(q),
     );
-    return sortBooks(filtered, sort);
-  }, [books, query, sort]);
+    return sortBooks(filterByShelf(filtered, links ?? [], selectedShelf, shelves ?? []), sort);
+  }, [books, query, sort, links, shelves, selectedShelf]);
+
+  const counts = useMemo(() => shelfCounts(shelves ?? [], links ?? []), [shelves, links]);
+  // A shelf deleted on another device must not leave the library looking empty.
+  const activeShelf = shelves?.find((s) => s.id === selectedShelf);
+  const shownShelf = activeShelf ? selectedShelf : ALL_BOOKS;
+
+  const createShelf = useCallback(async (name: string, documentId?: string) => {
+    const repo = services().shelves;
+    const shelf = await repo.create(name);
+    if (documentId) await repo.setMember(shelf.id, documentId, true);
+    return shelf;
+  }, []);
+
+  const deleteShelf = useCallback(
+    async (shelf: Shelf) => {
+      const repo = services().shelves;
+      const linkIds = await repo.softDelete(shelf.id);
+      if (selectedShelf === shelf.id) selectShelf(ALL_BOOKS);
+      toast(`Deleted shelf "${shelf.name}". Its books stay in your library.`, {
+        duration: UNDO_WINDOW_MS,
+        action: { label: "Undo", onClick: () => void repo.restore(shelf.id, linkIds) },
+      });
+    },
+    [selectedShelf],
+  );
 
   const remove = useCallback((book: Book) => {
     const { documents, storage } = services();
@@ -206,6 +257,19 @@ export function LibraryView() {
         </Button>
       </div>
 
+      {books && books.length > 0 ? (
+        <ShelfBar
+          shelves={shelves ?? []}
+          counts={counts}
+          total={books.length}
+          selected={shownShelf}
+          onSelect={selectShelf}
+          onNew={() => setNameDialog({ kind: "new" })}
+          onRename={(shelf) => setNameDialog({ kind: "rename", shelf })}
+          onDelete={(shelf) => void deleteShelf(shelf)}
+        />
+      ) : null}
+
       {error ? (
         <p className="text-destructive text-sm">Could not load your library: {error}</p>
       ) : null}
@@ -237,7 +301,11 @@ export function LibraryView() {
       ) : null}
 
       {books && books.length > 0 && visible.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No books match "{query}".</p>
+        <p className="text-muted-foreground text-sm" data-testid="no-matches">
+          {query.trim()
+            ? `No books match "${query}".`
+            : "This shelf is empty. Choose All books, then use a book's menu > Shelves."}
+        </p>
       ) : null}
 
       <div
@@ -257,10 +325,36 @@ export function LibraryView() {
             downloading={downloading.has(book.id)}
             onToggleOffline={(keep) => void toggleOffline(book, keep)}
             onEdit={() => setEditing(book)}
+            onShelves={() => setShelvesFor(book)}
             onDelete={() => remove(book)}
           />
         ))}
       </div>
+
+      <ShelfNameDialog
+        open={nameDialog !== null}
+        title={nameDialog?.kind === "rename" ? "Rename shelf" : "New shelf"}
+        initial={nameDialog?.kind === "rename" ? nameDialog.shelf.name : ""}
+        submitLabel={nameDialog?.kind === "rename" ? "Rename" : "Create shelf"}
+        onClose={() => setNameDialog(null)}
+        onSubmit={async (name) => {
+          if (nameDialog?.kind === "rename")
+            await services().shelves.rename(nameDialog.shelf.id, name);
+          else await createShelf(name);
+        }}
+      />
+      <BookShelvesDialog
+        title={shelvesFor?.title ?? null}
+        shelves={shelves ?? []}
+        memberOf={shelvesFor ? shelvesOfBook(links ?? [], shelvesFor.id) : new Set()}
+        onToggle={(shelf, member) =>
+          shelvesFor && void services().shelves.setMember(shelf.id, shelvesFor.id, member)
+        }
+        onCreate={async (name) => {
+          if (shelvesFor) await createShelf(name, shelvesFor.id);
+        }}
+        onClose={() => setShelvesFor(null)}
+      />
 
       <EditDialog book={editing} onClose={() => setEditing(null)} onSave={save} />
     </div>
@@ -275,6 +369,7 @@ function BookItem({
   downloading,
   onToggleOffline,
   onEdit,
+  onShelves,
   onDelete,
 }: {
   book: Book;
@@ -284,6 +379,7 @@ function BookItem({
   downloading: boolean;
   onToggleOffline: (keep: boolean) => void;
   onEdit: () => void;
+  onShelves: () => void;
   onDelete: () => void;
 }) {
   const grid = view === "grid";
@@ -340,6 +436,7 @@ function BookItem({
                 {downloading ? "Downloading…" : "Keep offline"}
               </DropdownMenuCheckboxItem>
               <DropdownMenuItem onSelect={onEdit}>Rename or edit author</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onShelves}>Shelves…</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
             </DropdownMenuContent>

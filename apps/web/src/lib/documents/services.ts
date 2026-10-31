@@ -12,6 +12,8 @@ import type { NotesRepo } from "../notes/notes-repo";
 import { createPowerSyncNotesRepo } from "../notes/powersync-notes-repo";
 import { createPowerSyncSettingsRepo } from "../settings/powersync-settings-repo";
 import type { SettingsRepo } from "../settings/settings-repo";
+import { createPowerSyncShelvesRepo } from "../shelves/powersync-shelves-repo";
+import type { ShelvesRepo } from "../shelves/shelves-repo";
 import type { DocumentsRepo, ReadingStateRepo } from "./documents-repo";
 import {
   createPowerSyncDocumentsRepo,
@@ -25,6 +27,7 @@ export interface Services {
   allHighlights: AllHighlightsRepo;
   notes: NotesRepo;
   settings: SettingsRepo;
+  shelves: ShelvesRepo;
   storage: StorageProvider;
 }
 
@@ -43,6 +46,7 @@ export function services(): Services {
       allHighlights: createPowerSyncAllHighlightsRepo(),
       notes: createPowerSyncNotesRepo(),
       settings: createPowerSyncSettingsRepo(),
+      shelves: createPowerSyncShelvesRepo(),
       storage: createSupabaseStorage(createClient(), publicEnv().NEXT_PUBLIC_SUPABASE_URL),
     };
   }

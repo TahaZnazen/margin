@@ -193,3 +193,14 @@ Each prompt in `prompts/` appends an entry here when it finishes, newest last. L
 **Deviations:** `#tag` words typed in a comment are NOT auto-converted (kept explicit, as specified). No tag rename/merge, no tags on bookmarks.
 **Follow-ups:** tag rename/merge across the library; autocomplete keyboard navigation (suggestions are buttons, reachable by Tab).
 **New dependencies:** none.
+
+## N4 — Shelves · 2026-10-31 · branch n4-shelves
+**Built:** Shelves (collections only; reading status comes with C1). A shelf bar above the library ("All books" + one chip per shelf with a count + "New shelf"); a chip filters grid and list, the choice is remembered per device (localStorage, try/catch). Shelf menu: rename, delete (soft-deletes the shelf and its links; undo toast restores exactly those links; books are never touched). Book menu has "Shelves…", a dialog with a checkbox per shelf and a field to make a new shelf with the book. Command palette lists "Go to shelf <name>". Phone: chips scroll sideways, no page overflow. No schema or sync change.
+**Key files:** `apps/web/src/lib/shelves/{shelves-repo,powersync-shelves-repo,logic,use-shelves}.ts` (+ `logic.test.ts`), `apps/web/src/app/app/{shelf-bar,library-view}.tsx`, `apps/web/src/components/command-palette.tsx`, `apps/web/src/lib/documents/services.ts` (only wiring), `apps/web/src/lib/uuid.ts` (`uuidv5`), `apps/web/e2e/shelves.spec.ts`.
+**Commands:** `ALLOW_SIGNUPS=false pnpm e2e -- shelves.spec.ts`; evidence in `evidence/n4-shelves/`.
+**Deviations from the prompt or docs:**
+- Link row id = UUIDv5(shelf id : document id), fixed namespace. `collection_documents` has `unique (collection_id, document_id)`; a random id per insert would make "remove, re-add" (or two devices adding the same book) send a second row for the pair and fail on sync. A fixed id makes it an upsert; re-adding also un-deletes the existing row whatever its id.
+- "Shelves…" opens a dialog rather than a submenu of checkboxes (works with keyboard, screen readers and on a phone); "New shelf…" is the field inside that dialog.
+- Creating a shelf from the bar does not switch to it (an empty shelf has no books to add from); the empty-shelf message says to choose All books and use the book menu.
+- Counts use live links to live books only; they ignore the search box.
+**Follow-ups:** reading status (C1); drag ordering and smart shelves are out of scope. The "Go to shelf" palette E2E failed about 1 run in 4 early on and then passed 6 runs in a row; cause not found (possibly cmdk list re-sorting under the click).

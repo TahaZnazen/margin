@@ -12,3 +12,19 @@ export function uuidv7(now: number = Date.now()): string {
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+const hexToBytes = (uuid: string) =>
+  Uint8Array.from(uuid.replaceAll("-", "").match(/../g) ?? [], (h) => Number.parseInt(h, 16));
+
+/** UUIDv5 (RFC 9562, SHA-1): the same namespace and name always give the same id, on every device. */
+export async function uuidv5(name: string, namespace: string): Promise<string> {
+  const nameBytes = new TextEncoder().encode(name);
+  const data = new Uint8Array(16 + nameBytes.length);
+  data.set(hexToBytes(namespace));
+  data.set(nameBytes, 16);
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-1", data)).slice(0, 16);
+  hash[6] = ((hash[6] ?? 0) & 0x0f) | 0x50;
+  hash[8] = ((hash[8] ?? 0) & 0x3f) | 0x80;
+  const hex = Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
