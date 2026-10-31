@@ -25,7 +25,8 @@ const input = (page: Page) => page.getByTestId("find-input");
 const count = (page: Page) => page.getByTestId("find-count");
 const indicator = (page: Page) => page.getByTestId("page-indicator");
 
-async function open(page: Page, url: string) {
+async function open(page: Page, url: string, signedIn = false) {
+  if (!signedIn) await signIn(page, user);
   await page.goto(url);
   await expect(page.locator(".mr-canvas").first()).toBeVisible();
   await expect(indicator(page)).toBeVisible();
@@ -52,6 +53,14 @@ test("setup: upload the books", async ({ page }) => {
   urls.paper = await uploadAndSettle(page, "two-column-paper");
   urls.french = await uploadAndSettle(page, "french-accents-ligatures");
   urls.arabic = await uploadAndSettle(page, "arabic-rtl");
+  // uploadAndSettle only watches the first tray card: wait for all three to be in storage.
+  await expect(page.getByTestId("upload-item")).toHaveCount(3);
+  await expect(page.locator('[data-testid="upload-item"]:not([data-stage="done"])')).toHaveCount(
+    0,
+    {
+      timeout: 60_000,
+    },
+  );
 });
 
 test("Ctrl+F opens the bar; a known sentence is found, scrolled to and highlighted; n of m steps", async ({
@@ -165,7 +174,7 @@ test("command palette: Find in book opens the bar prefilled", async ({ page }) =
   await page.keyboard.press("Escape");
   await expect(bar(page)).toHaveCount(0);
   await page.keyboard.press("Control+k");
-  await page.getByRole("combobox", { name: "Command" }).fill("find in");
+  await page.getByRole("combobox", { name: "Command" }).fill("find");
   await page.getByRole("option", { name: /Find in book/ }).click();
   await expect(bar(page)).toBeVisible();
   await expect(input(page)).toHaveValue("");
@@ -179,7 +188,7 @@ test("the ? sheet lists Ctrl/Cmd+F; the color chips have names", async ({ page }
   await expect(sheet.getByText("Find in this book")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByTestId("panel-toggle").click();
-  await expect(page.getByTestId("filter-yellow")).toHaveAccessibleName(/^[A-Za-z ]+, \d+$/);
+  await expect(page.getByTestId("filter-key")).toHaveAccessibleName(/^[A-Za-z ]+, \d+$/);
   await expect(page.getByRole("button", { name: "Key idea, 0" })).toBeVisible();
 });
 
@@ -192,12 +201,12 @@ test("axe clean with the bar open (desktop); phone layout", async ({ page }) => 
   await page.screenshot({ path: `${EVIDENCE}/desktop-bar.png` });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await open(page, urls.paper);
+  await open(page, urls.paper, true);
   await expect(bar(page)).toHaveCount(0);
   await page.getByTestId("find-toggle").click();
   await expect(bar(page)).toBeVisible();
   const box = await bar(page).boundingBox();
-  expect(box && box.width).toBeGreaterThan(360);
+  expect(box?.width).toBeGreaterThan(360);
   await input(page).fill("wavefunction");
   await expect(count(page)).toHaveText(/^1 of \d+$/);
   await expect(page.getByRole("button", { name: "Next match" })).toBeVisible();

@@ -167,18 +167,31 @@ export function CommandPalette() {
                   </CommandItem>
                 </CommandGroup>
               ) : null}
-              {reader ? (
-                <CommandGroup heading={`This book: ${reader.title}`}>
+              {reader && wantsFind && page === null ? (
+                // "find foo": searching for foo is the highlighted choice, whatever else matches.
+                <CommandGroup heading="Find" forceMount>
                   <CommandItem
                     forceMount
                     value="find in book"
-                    keywords={["search", "text", "ctrl f"]}
-                    onSelect={() => run(() => reader.openFind(page === null ? findText : ""))}
+                    onSelect={() => run(() => reader.openFind(findText))}
                   >
-                    <SearchIcon />
-                    {findText && page === null ? `Find “${findText}” in book` : "Find in book…"}
+                    <SearchIcon /> Find “{findText}” in book
                     <CommandShortcut>Ctrl F</CommandShortcut>
                   </CommandItem>
+                </CommandGroup>
+              ) : null}
+              {reader ? (
+                <CommandGroup heading={`This book: ${reader.title}`}>
+                  {wantsFind ? null : (
+                    <CommandItem
+                      value="find in book"
+                      keywords={["search", "text", "ctrl f"]}
+                      onSelect={() => run(() => reader.openFind())}
+                    >
+                      <SearchIcon /> Find in book…
+                      <CommandShortcut>Ctrl F</CommandShortcut>
+                    </CommandItem>
+                  )}
                   <CommandItem
                     onSelect={() => run(reader.toggleSidebar)}
                     value="toggle contents sidebar"

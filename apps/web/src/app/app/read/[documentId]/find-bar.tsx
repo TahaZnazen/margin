@@ -98,7 +98,7 @@ export function FindBar({
       <output
         className="min-w-16 shrink-0 text-center text-muted-foreground text-xs tabular-nums"
         data-testid="find-count"
-        data-searching={find.searching}
+        data-searching={find.searching || (value.trim() !== "" && find.query !== value)}
         aria-live="polite"
       >
         {count}
