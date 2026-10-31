@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { flags, parseFlagList } from "./flags";
+import { parseFlagList } from "./flags";
 
 describe("parseFlagList", () => {
   it("is empty for undefined and blank values", () => {
