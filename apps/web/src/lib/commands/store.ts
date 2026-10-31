@@ -14,6 +14,8 @@ export interface ReaderCommands {
   jumpToAnnotation: (id: string) => void;
   toggleSidebar: () => void;
   togglePanel: () => void;
+  /** Opens the find bar; a non-empty query is searched at once. */
+  openFind: (query?: string) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   fitWidth: () => void;

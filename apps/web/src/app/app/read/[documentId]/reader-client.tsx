@@ -41,6 +41,7 @@ import {
   PanelLeftIcon,
   PanelRightIcon,
   PlusIcon,
+  SearchIcon,
   SunIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -63,6 +64,7 @@ import {
   nextChapterAtEnd,
   pageFromHash,
 } from "@/lib/reader/chapters";
+import { FindBar } from "./find-bar";
 import { ReaderSidebar, SIDEBAR_TABS, type SidebarTab } from "./reader-sidebar";
 import { SidePanel } from "./side-panel";
 import { useAnnotationLayer } from "./use-annotation-layer";
@@ -489,6 +491,12 @@ function Reading({
     if (next) setPreference(next);
   };
   const [barHidden, setBarHidden] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findSeed, setFindSeed] = useState({ text: "", nonce: 0 });
+  const openFind = useCallback((text = "") => {
+    setFindOpen(true);
+    setFindSeed((s) => ({ text, nonce: s.nonce + 1 }));
+  }, []);
   const notebook = useNotebook(documentId);
   const position = useRef<ReaderPosition | null>(null);
   const pageCount = useRef(0);
@@ -743,6 +751,7 @@ function Reading({
       jumpToAnnotation: (id) => host.jump(id),
       toggleSidebar: () => setSidebarOpen(!sidebarOpen),
       togglePanel: () => setPanelOpen((o) => !o),
+      openFind,
       ...zoomActions,
     }),
     [
@@ -754,6 +763,7 @@ function Reading({
       host,
       setSidebarOpen,
       sidebarOpen,
+      openFind,
       zoomActions,
     ],
   );
@@ -818,6 +828,18 @@ function Reading({
 
   const actions = (
     <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 sm:size-9"
+        aria-label="Find in this book"
+        title="Find in this book (Ctrl+F)"
+        aria-pressed={findOpen}
+        data-testid="find-toggle"
+        onClick={() => openFind()}
+      >
+        <SearchIcon />
+      </Button>
       <ZoomControls percent={state?.percent ?? 100} {...zoomActions} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -937,11 +959,24 @@ function Reading({
             }}
             onError={setError}
             onShortcut={(name) => {
-              if (name === "goto") palette.open("page ");
+              if (name === "find") openFind();
+              else if (name === "goto") palette.open("page ");
               else if (name === "help") palette.openHelp();
               else if (name === "theme") cycleTheme();
             }}
           />
+          {findOpen && state ? (
+            <FindBar
+              viewer={viewer}
+              find={state.find}
+              seed={findSeed}
+              onClose={() => setFindOpen(false)}
+              className={cn(
+                "absolute z-20 transition-[top] duration-(--duration-chrome) max-sm:inset-x-2 sm:top-3 sm:right-4",
+                compactChrome && !barHidden ? "top-14" : "top-2",
+              )}
+            />
+          ) : null}
           {layer.snap.failing ? (
             <output
               className="absolute top-3 left-4 z-10 rounded-md bg-card px-2 py-1 text-destructive text-xs shadow ring-1 ring-destructive"

@@ -202,6 +202,7 @@ export function SidePanel(props: SidePanelProps) {
                 data-testid={`filter-${c}`}
                 aria-pressed={colors.has(c)}
                 title={labels[c]}
+                aria-label={`${labels[c]}, ${counts.get(c) ?? 0}`}
                 className={cn(
                   "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
                   colors.has(c) && "bg-accent ring-1 ring-foreground/30",

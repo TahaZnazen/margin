@@ -28,6 +28,7 @@ import {
   PaletteIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  SearchIcon,
   SettingsIcon,
   ZoomInIcon,
   ZoomOutIcon,
@@ -73,6 +74,14 @@ function pageFromQuery(query: string): number | null {
   return match?.[1] ? Number(match[1]) : null;
 }
 
+/** "find foo" / "search foo" -> "foo"; any other text is searched as typed. */
+function findTextFromQuery(query: string): string {
+  return query
+    .trim()
+    .replace(/^(?:find(?: in book)?|search)\s*/i, "")
+    .trim();
+}
+
 export function CommandPalette() {
   useGlobalKeys();
   const { open, query, help, reader } = usePalette();
@@ -98,6 +107,13 @@ export function CommandPalette() {
   useEffect(() => {
     if (page !== null) setSelected(`go to page ${page}`);
   }, [page]);
+
+  // "find ..." makes searching the book the highlighted choice, so Enter opens the find bar.
+  const findText = findTextFromQuery(query);
+  const wantsFind = /^(?:find|search)\b/i.test(query.trim()) && findText !== "";
+  useEffect(() => {
+    if (wantsFind) setSelected("find in book");
+  }, [wantsFind]);
 
   const run = (action: () => void) => {
     palette.close();
@@ -153,6 +169,16 @@ export function CommandPalette() {
               ) : null}
               {reader ? (
                 <CommandGroup heading={`This book: ${reader.title}`}>
+                  <CommandItem
+                    forceMount
+                    value="find in book"
+                    keywords={["search", "text", "ctrl f"]}
+                    onSelect={() => run(() => reader.openFind(page === null ? findText : ""))}
+                  >
+                    <SearchIcon />
+                    {findText && page === null ? `Find “${findText}” in book` : "Find in book…"}
+                    <CommandShortcut>Ctrl F</CommandShortcut>
+                  </CommandItem>
                   <CommandItem
                     onSelect={() => run(reader.toggleSidebar)}
                     value="toggle contents sidebar"
@@ -280,6 +306,8 @@ const SHORTCUTS: { group: string; rows: [string[], string][] }[] = [
       [["PageDown", "PageUp"], "Next / previous page (also Right / Left)"],
       [["Home", "End"], "First / last page"],
       [["G"], "Go to page"],
+      [["Ctrl/Cmd", "F"], "Find in this book (again: the browser's find)"],
+      [["Enter", "Shift+Enter"], "In the find box: next / previous match"],
       [["+", "-", "0"], "Zoom in / out / fit width"],
       [["T"], "Cycle theme"],
       [["[", "]"], "Previous / next chapter"],
