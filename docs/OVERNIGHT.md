@@ -63,3 +63,4 @@ Left for later (see `docs/PROGRESS.md`): Lighthouse and performance runs, pinch-
 Started 2026-10-31 04:20. Each feature: a builder agent, a validator agent, a tester agent (full E2E suite + a hand check on desktop and phone), then merged and pushed (Vercel deploys `main`). The run resumes by itself after a usage reset (30-minute check while VS Code stays open).
 
 - ✅ **Search in book**: Ctrl+F (or the search icon) finds text in the whole book, "3 of 17", Enter / Shift+Enter, Esc. Accents ignored, Arabic works. Also in the command palette and the `?` sheet. Tests: 254 unit, E2E 89/90 (the 1 is the known phone scroll flake, passes alone).
+- ✅ **Time left and page numbers**: library cards show "p. 5 of 9 · 50 % · about 3 min left"; the chapter list shows each chapter's page and the time left in the current one. No estimate is shown when it would be misleading (for example right after jumping to a late chapter). Tests: 266 unit, E2E 91/92 (same known phone flake).
