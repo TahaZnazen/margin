@@ -200,6 +200,7 @@ test("import on upload, Markdown and annotated PDF export, round trip through th
   expect(dump.version).toBe(1);
   expect(Object.keys(dump.tables).sort()).toEqual([
     "annotations",
+    "chapter_progress",
     "collection_documents",
     "collections",
     "documents",
