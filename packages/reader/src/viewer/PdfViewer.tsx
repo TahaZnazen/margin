@@ -538,6 +538,8 @@ export function PdfViewer({
         }));
       };
       for await (const hit of doc.search(trimmed, controller.signal)) {
+        // A newer query (or Esc) aborted this search while a page was loading: drop its late hits.
+        if (controller.signal.aborted) break;
         found.push(hit);
         if (!jumped) {
           jumped = true;
