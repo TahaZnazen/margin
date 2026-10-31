@@ -32,6 +32,7 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   BookmarkIcon,
+  CheckIcon,
   CoffeeIcon,
   DownloadIcon,
   FocusIcon,
@@ -50,6 +51,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { QuoteHost } from "@/components/notes/note-editor";
 import { SyncStatus } from "@/components/sync-status";
+import { buildChapterTree, onLastPageOf } from "@/lib/chapters/progress";
+import { useChapterProgress } from "@/lib/chapters/use-chapter-progress";
 import { palette, type ReaderCommands, useRegisterReaderCommands } from "@/lib/commands/store";
 import type { Book, ReadingState } from "@/lib/documents/documents-repo";
 import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
@@ -354,6 +357,8 @@ function ReaderHeader({
   chapter,
   chapterProgress,
   chapterLeft,
+  chapterDone,
+  onToggleChapterDone,
   sidebarOpen,
   onToggleSidebar,
   actions,
@@ -365,6 +370,9 @@ function ReaderHeader({
   chapterProgress?: number;
   /** "8 min": time left in the chapter, when the pace is known. */
   chapterLeft?: string;
+  /** Whether the current chapter is ticked; with `onToggleChapterDone` shows the check button. */
+  chapterDone?: boolean;
+  onToggleChapterDone?: () => void;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   actions?: React.ReactNode;
@@ -408,18 +416,44 @@ function ReaderHeader({
           {title}
         </h1>
         {chapter ? (
-          <p
-            className="truncate text-muted-foreground text-xs leading-tight"
-            data-testid="chapter-title"
-          >
-            {chapter}
-            {chapterLeft ? (
-              <span className="hidden lg:inline" data-testid="chapter-time-left-header">
-                {" "}
-                · {chapterLeft} left in chapter
-              </span>
+          <div className="flex min-w-0 items-center gap-1">
+            <p
+              className="min-w-0 truncate text-muted-foreground text-xs leading-tight"
+              data-testid="chapter-title"
+            >
+              {chapter}
+              {chapterLeft ? (
+                <span className="hidden lg:inline" data-testid="chapter-time-left-header">
+                  {" "}
+                  · {chapterLeft} left in chapter
+                </span>
+              ) : null}
+            </p>
+            {onToggleChapterDone ? (
+              <button
+                type="button"
+                aria-pressed={chapterDone === true}
+                aria-label="Mark chapter as done"
+                title={chapterDone ? "Done (D to clear)" : "Mark done (D)"}
+                data-testid="chapter-done-button"
+                data-done={chapterDone ? "true" : "false"}
+                className="flex size-6 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:size-9"
+                onClick={onToggleChapterDone}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-4 items-center justify-center rounded-full border",
+                    chapterDone
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted-foreground/60",
+                  )}
+                >
+                  {chapterDone ? <CheckIcon className="size-3" strokeWidth={3} /> : null}
+                </span>
+              </button>
             ) : null}
-          </p>
+          </div>
         ) : null}
       </div>
       <SyncStatus />
@@ -448,6 +482,9 @@ function ReaderHeader({
 
 /** How often (in active seconds) the shown pace is refreshed, so the reader doesn't re-render every second. */
 const PACE_REFRESH_EVERY = 15;
+
+/** How long the last page of a chapter must stay on screen before the auto-mark setting ticks it. */
+const AUTO_MARK_DWELL_MS = 2500;
 
 const SIDEBAR_KEY = "margin.reader.sidebar";
 const derivedCache = new Map<string, OutlineItem[]>();
@@ -741,7 +778,25 @@ function Reading({
     [hasOutline, outline, derived],
   );
   const allChapters = useMemo(() => flatChapters(chapterSource), [chapterSource]);
-  const chapters = useMemo(() => chapterLevel(allChapters), [allChapters]);
+  const chapterNodes = useMemo(
+    () => buildChapterTree(chapterSource, !hasOutline),
+    [chapterSource, hasOutline],
+  );
+  const chapters = useMemo(() => chapterLevel(chapterNodes), [chapterNodes]);
+  const finishedSet = useRef(false);
+  const marks = useChapterProgress(documentId, chapterNodes, () => {
+    // Every chapter is done: the book is finished. Set once per visit; the user can still change it.
+    if (finishedSet.current || book.readingStatus === "finished") return;
+    finishedSet.current = true;
+    void services().documents.update(documentId, { readingStatus: "finished" });
+  });
+  const confusingPages = useMemo(
+    () =>
+      layer.snap.items
+        .filter((a) => a.kind === "highlight" && a.color === "confusing")
+        .map((a) => a.pageStart),
+    [layer.snap.items],
+  );
   const page = state?.page ?? 0;
   const pageTotal = state?.pageCount ?? 0;
   const chapterIdx = chapterIndexAt(chapters, page);
@@ -755,6 +810,37 @@ function Reading({
           ?.page ?? pageTotal)
       : pageTotal;
   const chapterLeft = secondsLeftInRange(secPerPage, page, chapterEnd);
+  const chapterDone = chapter ? marks.isDone(chapter.key) : false;
+  const atChapterEnd = chapter ? onLastPageOf(chapterNodes, chapter, page, pageTotal) : false;
+  const toggleChapterDone = useCallback(() => {
+    if (chapter) marks.toggle(chapter.key);
+  }, [chapter, marks.toggle]);
+
+  // Opt-in: reaching a chapter's last page marks it done (source 'auto'). Each chapter is tried
+  // once per visit, so clearing the mark on that page doesn't bring it back.
+  const [autoMark, setAutoMark] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    services()
+      .settings.get()
+      .then((s) => !cancelled && setAutoMark(s.readerPrefs.autoMarkChapters === true))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const autoTried = useRef(new Set<string>());
+  useEffect(() => {
+    if (!autoMark || !marks.ready || !chapter || !atChapterEnd || pageTotal === 0) return;
+    if (autoTried.current.has(chapter.key)) return;
+    // Finishing means staying on the last page for a moment, not flying past it.
+    const key = chapter.key;
+    const timer = setTimeout(() => {
+      autoTried.current.add(key);
+      marks.markDone(key, "auto");
+    }, AUTO_MARK_DWELL_MS);
+    return () => clearTimeout(timer);
+  }, [autoMark, marks.ready, marks.markDone, chapter, atChapterEnd, pageTotal]);
 
   const sidebarOpen = narrow ? sheetOpen : sidebarPrefs.open;
   const setSidebarOpen = useCallback(
@@ -964,6 +1050,9 @@ function Reading({
       togglePanel: () => setPanelOpen((o) => !o),
       toggleFocus,
       openFind,
+      hasChapter: Boolean(chapter),
+      chapterDone,
+      toggleChapterDone,
       ...zoomActions,
     }),
     [
@@ -977,6 +1066,9 @@ function Reading({
       sidebarOpen,
       toggleFocus,
       openFind,
+      chapter,
+      chapterDone,
+      toggleChapterDone,
       zoomActions,
     ],
   );
@@ -987,19 +1079,23 @@ function Reading({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if ((key !== "p" && key !== "o") || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((key !== "p" && key !== "o" && key !== "d") || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target;
       if (
         t instanceof HTMLElement &&
         (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
       )
         return;
-      if (key === "p") setPanelOpen((o) => !o);
+      if (key === "d") {
+        if (e.repeat || e.shiftKey) return;
+        e.preventDefault();
+        toggleChapterDone();
+      } else if (key === "p") setPanelOpen((o) => !o);
       else setSidebarOpen(!sidebarOpen);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sidebarOpen, setSidebarOpen]);
+  }, [sidebarOpen, setSidebarOpen, toggleChapterDone]);
 
   // "F" toggles focus mode. Esc leaves it, but only when nothing nearer needs the key: a text field,
   // an open menu or dialog, the annotation popover (the annotation layer clears it), the find bar.
@@ -1040,6 +1136,9 @@ function Reading({
       pageCount={pageTotal}
       secPerPage={secPerPage}
       bookmarks={layer.bookmarks}
+      nodes={chapterNodes}
+      progress={marks}
+      confusingPages={confusingPages}
       onGoTo={goTo}
       onBookmark={(id) => {
         if (narrow) setSheetOpen(false);
@@ -1181,6 +1280,8 @@ function Reading({
         chapter={chapter?.title}
         chapterProgress={chapter ? chapterFraction : undefined}
         chapterLeft={chapter && chapterLeft !== null ? formatDuration(chapterLeft) : undefined}
+        chapterDone={chapter ? chapterDone : undefined}
+        onToggleChapterDone={chapter ? toggleChapterDone : undefined}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         actions={actions}
@@ -1264,16 +1365,33 @@ function Reading({
             </button>
           ) : null}
           {upNext ? (
-            <button
-              type="button"
-              data-testid="next-chapter"
-              title="Next chapter (])"
-              className="absolute bottom-3 left-1/2 z-10 flex min-h-9 max-w-[calc(100%-9rem)] -translate-x-1/2 items-center gap-1.5 rounded-full border bg-card/95 px-3 py-1 text-muted-foreground text-xs shadow-md hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => goTo(upNext.page, upNext.offsetPt)}
-            >
-              <span className="truncate">Next chapter: {upNext.title}</span>
-              <ArrowRightIcon className="size-3.5 shrink-0" />
-            </button>
+            <div className="absolute bottom-3 left-1/2 z-10 flex max-w-[calc(100%-9rem)] -translate-x-1/2 items-center gap-1">
+              {chapter && !chapterDone ? (
+                <button
+                  type="button"
+                  data-testid="done-and-next"
+                  title="Mark this chapter done and go to the next (D marks without moving)"
+                  className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-primary bg-primary px-3 py-1 text-primary-foreground text-xs shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    marks.markDone(chapter.key);
+                    goTo(upNext.page, upNext.offsetPt);
+                  }}
+                >
+                  <CheckIcon className="size-3.5 shrink-0" strokeWidth={3} />
+                  <span>Done &amp; next</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                data-testid="next-chapter"
+                title="Next chapter (])"
+                className="flex min-h-9 min-w-0 items-center gap-1.5 rounded-full border bg-card/95 px-3 py-1 text-muted-foreground text-xs shadow-md hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => goTo(upNext.page, upNext.offsetPt)}
+              >
+                <span className="truncate">Next chapter: {upNext.title}</span>
+                <ArrowRightIcon className="size-3.5 shrink-0" />
+              </button>
+            </div>
           ) : null}
           {state ? (
             <output

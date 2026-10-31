@@ -20,6 +20,7 @@ import { Kbd } from "@margin/ui/components/kbd";
 import { useTheme } from "@margin/ui/theme";
 import {
   BookOpenIcon,
+  CheckCircle2Icon,
   FocusIcon,
   HashIcon,
   HighlighterIcon,
@@ -226,6 +227,17 @@ export function CommandPalette() {
                       <CommandShortcut>Ctrl F</CommandShortcut>
                     </CommandItem>
                   )}
+                  {reader.hasChapter ? (
+                    <CommandItem
+                      value="mark chapter as done"
+                      keywords={["finished", "complete", "check", "tick", "chapter done"]}
+                      onSelect={() => run(reader.toggleChapterDone)}
+                    >
+                      <CheckCircle2Icon />{" "}
+                      {reader.chapterDone ? "Mark chapter as not done" : "Mark chapter as done"}
+                      <CommandShortcut>D</CommandShortcut>
+                    </CommandItem>
+                  ) : null}
                   <CommandItem
                     onSelect={() => run(reader.toggleSidebar)}
                     value="toggle contents sidebar"
@@ -412,6 +424,7 @@ const SHORTCUTS: { group: string; rows: [string[], string][] }[] = [
       [["+", "-", "0"], "Zoom in / out / fit width"],
       [["T"], "Cycle theme"],
       [["[", "]"], "Previous / next chapter"],
+      [["D"], "Mark the current chapter as done (again: not done)"],
       [["O"], "Toggle contents sidebar"],
       [["P"], "Toggle annotations panel"],
       [["F"], "Focus mode: only the page (Esc leaves)"],

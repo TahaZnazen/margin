@@ -170,3 +170,29 @@ describe("Export everything zip", () => {
     expect(zip["pdfs/Deep-Work-99999999.pdf"]).toEqual(pdf);
   });
 });
+
+describe("chapters_done frontmatter (ADR 0004)", () => {
+  const base = {
+    documentId: DOC,
+    title: "Book",
+    author: null,
+    exportedAt: "2026-10-31T10:00:00.000Z",
+    origin: "https://margin.test",
+    outline: [],
+    annotations: [],
+    notebook: null,
+  };
+  it("shows chapters done as done/total when the book has chapters", () => {
+    const md = bookToMarkdown({ ...base, chaptersDone: { done: 4, total: 12 } });
+    expect(md).toContain("chapters_done: 4/12\n");
+  });
+  it("leaves it out for a book without chapters", () => {
+    expect(bookToMarkdown(base)).not.toContain("chapters_done");
+  });
+});
+
+describe("chapter_progress in the backup", () => {
+  it("is one of the dumped tables", () => {
+    expect(BACKUP_TABLES).toContain("chapter_progress");
+  });
+});

@@ -4,9 +4,11 @@ import { type OutlineItem, type ReaderDocument, Thumbnails } from "@margin/reade
 import { toast } from "@margin/ui/components/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@margin/ui/components/tabs";
 import { cn } from "@margin/ui/lib/utils";
-import { ChevronRightIcon, LinkIcon, PencilIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, LinkIcon, PencilIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
+import { type ChapterNode, chapterEndPage, chapterKey } from "@/lib/chapters/progress";
+import type { ChapterProgressApi } from "@/lib/chapters/use-chapter-progress";
 import { bookmarkLabel, MAX_BOOKMARK_NAME, pageLink } from "@/lib/reader/chapters";
 import { formatDuration, secondsLeftInRange } from "@/lib/reader/pace";
 
@@ -50,6 +52,11 @@ export interface ReaderSidebarProps {
   /** Seconds per page once there is enough reading data; null before. */
   secPerPage: number | null;
   bookmarks: readonly Annotation[];
+  /** Every row that can be ticked, with its stored key. */
+  nodes: readonly ChapterNode[];
+  progress: ChapterProgressApi;
+  /** 0-based pages that carry a "Confusing" highlight. */
+  confusingPages: readonly number[];
   onGoTo: (page: number, offsetPt?: number) => void;
   onBookmark: (id: string) => void;
   /** Sets (or clears, with "") the bookmark's name: its comment, through the undoable store. */
@@ -207,7 +214,11 @@ function Chapters({
   onGoTo,
   onTab,
   secPerPage,
+  nodes,
+  progress,
+  confusingPages,
 }: ReaderSidebarProps) {
+  const nodeByKey = useMemo(() => new Map(nodes.map((n) => [n.key, n])), [nodes]);
   const rows = useMemo(() => rowsOf(outline), [outline]);
   const scroller = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
@@ -300,6 +311,20 @@ function Chapters({
             const isCurrent = r.key === currentKey;
             const expanded = open.has(r.key) || forced.has(r.key);
             const target = r.item.page;
+            const node =
+              target === undefined
+                ? undefined
+                : nodeByKey.get(chapterKey(detected, r.key, target, r.item.title));
+            const done = node ? progress.isDone(node.key) : false;
+            const kids = node?.childKeys ?? [];
+            const kidsDone = kids.filter((k) => progress.isDone(k)).length;
+            const partial = !done && kids.length > 0 && kidsDone > 0;
+            const toClarify = node
+              ? (() => {
+                  const end = chapterEndPage(nodes, node, pageCount);
+                  return confusingPages.filter((p) => p >= node.page && p < end).length;
+                })()
+              : 0;
             return (
               <li key={r.key}>
                 <div
@@ -310,6 +335,7 @@ function Chapters({
                     "group relative flex items-start gap-0.5 border-transparent border-l-2 pr-1 text-sm",
                     isCurrent && "border-primary bg-accent/70 font-medium",
                   )}
+                  data-done={done ? "true" : undefined}
                   style={{ paddingLeft: `${0.25 + r.depth * 0.9}rem` }}
                 >
                   {r.hasChildren ? (
@@ -334,11 +360,42 @@ function Chapters({
                   ) : (
                     <span className="size-7 shrink-0" aria-hidden />
                   )}
+                  {node ? (
+                    <button
+                      type="button"
+                      aria-pressed={done}
+                      aria-label={`Mark "${r.item.title || "Untitled"}" as done`}
+                      title={done ? "Done (click to clear)" : "Mark as done"}
+                      data-testid="chapter-check"
+                      data-done={done ? "true" : "false"}
+                      data-auto={done && progress.isAuto(node.key) ? "true" : undefined}
+                      className="group/check mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:size-11"
+                      onClick={() => progress.toggle(node.key)}
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "flex size-5 items-center justify-center rounded-full border",
+                          done
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-muted-foreground/60 group-hover/check:border-primary",
+                          done && progress.isAuto(node.key) && "opacity-60",
+                        )}
+                      >
+                        {done ? <CheckIcon className="size-3.5" strokeWidth={3} /> : null}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="size-8 shrink-0" aria-hidden />
+                  )}
                   <button
                     type="button"
                     disabled={target === undefined}
                     aria-current={isCurrent ? "location" : undefined}
-                    className="min-h-9 min-w-0 flex-1 rounded-md py-1.5 pr-1 text-left leading-snug hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                    className={cn(
+                      "min-h-9 min-w-0 flex-1 rounded-md py-1.5 pr-1 text-left leading-snug hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                      done && !isCurrent && "text-muted-foreground",
+                    )}
                     onClick={() => target !== undefined && onGoTo(target, r.item.offsetPt)}
                   >
                     {r.item.title || "Untitled"}
@@ -348,6 +405,27 @@ function Chapters({
                         data-testid="chapter-time-left"
                       >
                         {chapterLeft}
+                      </span>
+                    ) : null}
+                    {partial ? (
+                      <span
+                        className="block font-normal text-muted-foreground text-xs"
+                        data-testid="chapter-partial"
+                      >
+                        {kidsDone}/{kids.length} done
+                      </span>
+                    ) : null}
+                    {toClarify > 0 ? (
+                      <span
+                        className="flex items-center gap-1 font-normal text-muted-foreground text-xs"
+                        data-testid="chapter-clarify"
+                      >
+                        <span
+                          aria-hidden
+                          className="size-2 rounded-full"
+                          style={{ background: "var(--hl-confusing-chip)" }}
+                        />
+                        {toClarify} to clarify
                       </span>
                     ) : null}
                   </button>

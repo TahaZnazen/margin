@@ -5,6 +5,7 @@ import type {
   DocumentsRepo,
   ReadingState,
   ReadingStateRepo,
+  ReadingStatus,
   ReadStatus,
 } from "./documents-repo";
 
@@ -19,6 +20,7 @@ type Row = {
   cover_path: string | null;
   has_text_layer: number | null;
   read_status: ReadStatus;
+  reading_status: ReadingStatus | null;
   last_opened_at: string | null;
   created_at: string;
   annotations_imported_at: string | null;
@@ -28,7 +30,7 @@ type Row = {
 };
 
 const COLUMNS =
-  "d.id, d.title, d.author, d.sha256, d.byte_size, d.page_count, d.storage_path, d.cover_path, d.has_text_layer, d.read_status, d.last_opened_at, d.created_at, d.annotations_imported_at";
+  "d.id, d.title, d.author, d.sha256, d.byte_size, d.page_count, d.storage_path, d.cover_path, d.has_text_layer, d.read_status, d.reading_status, d.last_opened_at, d.created_at, d.annotations_imported_at";
 
 const toBook = (row: Row): Book => ({
   id: row.id,
@@ -41,6 +43,7 @@ const toBook = (row: Row): Book => ({
   coverPath: row.cover_path,
   hasTextLayer: row.has_text_layer === null ? null : row.has_text_layer === 1,
   readStatus: row.read_status,
+  readingStatus: row.reading_status ?? null,
   lastOpenedAt: row.last_opened_at,
   createdAt: row.created_at,
   annotationsImportedAt: row.annotations_imported_at,
@@ -97,6 +100,7 @@ export function createPowerSyncDocumentsRepo(): DocumentsRepo {
       if (patch.coverPath !== undefined) set("cover_path", patch.coverPath);
       if (patch.pageCount !== undefined) set("page_count", patch.pageCount);
       if (patch.hasTextLayer !== undefined) set("has_text_layer", patch.hasTextLayer ? 1 : 0);
+      if (patch.readingStatus !== undefined) set("reading_status", patch.readingStatus);
       if (patch.outline !== undefined) set("outline", JSON.stringify(patch.outline));
       if (sets.length === 0) return;
       set("updated_at", new Date().toISOString());

@@ -28,6 +28,8 @@ export interface BookMarkdownInput {
   outline: readonly OutlineItem[];
   annotations: readonly MarkdownAnnotation[];
   notebook: JsonNode | null;
+  /** Top-level chapters done out of all of them, when the book has chapters (ADR 0004). */
+  chaptersDone?: { done: number; total: number };
 }
 
 export const deepLink = (origin: string, documentId: string, annotationId: string) =>
@@ -171,6 +173,9 @@ export function bookToMarkdown(input: BookMarkdownInput): string {
     "---",
     `title: ${yaml(input.title)}`,
     ...(input.author ? [`author: ${yaml(input.author)}`] : []),
+    ...(input.chaptersDone
+      ? [`chapters_done: ${input.chaptersDone.done}/${input.chaptersDone.total}`]
+      : []),
     `exported_at: ${yaml(input.exportedAt)}`,
     "---",
     "",

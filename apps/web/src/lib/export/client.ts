@@ -5,6 +5,7 @@ import type { OutlineItem } from "@margin/reader";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
 import { parseTags } from "@/lib/annotations/tags";
+import { countedKeys, summarize } from "@/lib/chapters/progress";
 import { opfsRead } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { asDoc, type JsonNode } from "@/lib/notes/doc";
@@ -80,7 +81,7 @@ export async function pdfBytes(
 export async function exportBookMarkdown(documentId: string, outline: OutlineItem[]) {
   const s = services();
   const supabase = createClient();
-  const [book, items, notebook, settings] = await Promise.all([
+  const [book, items, notebook, settings, doneRows] = await Promise.all([
     s.documents.get(documentId),
     s.annotations.list(documentId),
     s.notes.getForDocument(documentId),
@@ -88,8 +89,11 @@ export async function exportBookMarkdown(documentId: string, outline: OutlineIte
       .from("user_settings")
       .select("highlight_labels")
       .maybeSingle<{ highlight_labels: Partial<Record<HighlightColor, string>> | null }>(),
+    s.chapterProgress.doneForDocument(documentId),
   ]);
   if (!book) throw new Error("This book is not in your library.");
+  const topKeys = countedKeys(outline);
+  const chapters = summarize(topKeys, new Set(doneRows.map((r) => r.key)));
   const markdown = bookToMarkdown({
     documentId,
     title: book.title,
@@ -98,6 +102,7 @@ export async function exportBookMarkdown(documentId: string, outline: OutlineIte
     origin: window.location.origin,
     labels: settings.data?.highlight_labels ?? {},
     outline,
+    chaptersDone: chapters.total > 0 ? { done: chapters.done, total: chapters.total } : undefined,
     annotations: items.map(markdownAnnotation),
     notebook: notebook ? asDoc(notebook.docJson) : null,
   });
@@ -159,6 +164,12 @@ export async function exportEverything(
     onProgress({ step: `Packing ${String(doc.title)}`, done: i, total: tables.documents.length });
     const notebook = tables.notes.find((n) => n.document_id === id);
     const outline = Array.isArray(doc.outline) ? (doc.outline as OutlineItem[]) : [];
+    const doneKeys = new Set(
+      tables.chapter_progress
+        .filter((c) => c.document_id === id && c.done_at != null)
+        .map((c) => String(c.chapter_key)),
+    );
+    const chapters = summarize(countedKeys(outline), doneKeys);
     let pdf: Uint8Array | undefined;
     if (includePdfs) {
       try {
@@ -179,6 +190,8 @@ export async function exportEverything(
         origin: window.location.origin,
         labels,
         outline,
+        chaptersDone:
+          chapters.total > 0 ? { done: chapters.done, total: chapters.total } : undefined,
         annotations: tables.annotations.filter((a) => a.document_id === id).map(rowAnnotation),
         notebook: notebook ? (asDoc(notebook.doc_json) as JsonNode) : null,
       }),

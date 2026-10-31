@@ -13,6 +13,7 @@ export const BACKUP_TABLES = [
   "collections",
   "collection_documents",
   "user_settings",
+  "chapter_progress",
 ] as const;
 export type BackupTable = (typeof BACKUP_TABLES)[number];
 

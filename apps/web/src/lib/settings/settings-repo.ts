@@ -2,7 +2,11 @@ import type { HighlightColor } from "@margin/annotation-model";
 import type { ThemePreference } from "@margin/ui/theme";
 import { z } from "zod";
 
-export const ReaderPrefs = z.object({ defaultZoom: z.enum(["fit-width", "fit-page"]) });
+export const ReaderPrefs = z.object({
+  defaultZoom: z.enum(["fit-width", "fit-page"]),
+  /** Mark a chapter done when its last page is reached (off by default; marks are `auto`). */
+  autoMarkChapters: z.boolean().optional(),
+});
 export type ReaderPrefs = z.infer<typeof ReaderPrefs>;
 
 export const DEFAULT_READER_PREFS: ReaderPrefs = { defaultZoom: "fit-width" };

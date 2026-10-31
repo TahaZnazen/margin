@@ -66,6 +66,20 @@ export function SettingsForm() {
     }
   }
 
+  async function saveAutoMark(checked: boolean) {
+    if (!settings) return;
+    const readerPrefs: Settings["readerPrefs"] = {
+      ...settings.readerPrefs,
+      autoMarkChapters: checked,
+    };
+    setSettings({ ...settings, readerPrefs });
+    try {
+      await getRepo().save({ readerPrefs });
+    } catch {
+      toast.error("Couldn't save the setting.");
+    }
+  }
+
   return (
     <div className="space-y-8">
       <fieldset className="space-y-2">
@@ -87,6 +101,21 @@ export function SettingsForm() {
           <ToggleGroupItem value="fit-width">Fit width</ToggleGroupItem>
           <ToggleGroupItem value="fit-page">Fit page</ToggleGroupItem>
         </ToggleGroup>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="font-medium text-sm">Chapters</legend>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            data-testid="auto-mark-chapters"
+            className="size-4 accent-primary"
+            disabled={!settings}
+            checked={settings?.readerPrefs.autoMarkChapters === true}
+            onChange={(event) => void saveAutoMark(event.target.checked)}
+          />
+          Mark chapters done when I finish their last page
+        </label>
       </fieldset>
 
       <form

@@ -4,6 +4,14 @@
  */
 export type ReadStatus = "uploading" | "readable" | "failed";
 
+export const READING_STATUSES = ["to_read", "reading", "finished"] as const;
+export type ReadingStatus = (typeof READING_STATUSES)[number];
+export const READING_STATUS_LABELS: Record<ReadingStatus, string> = {
+  to_read: "To read",
+  reading: "Reading",
+  finished: "Finished",
+};
+
 export interface Book {
   id: string;
   title: string;
@@ -15,6 +23,8 @@ export interface Book {
   coverPath: string | null;
   hasTextLayer: boolean | null;
   readStatus: ReadStatus;
+  /** The user's own label (ADR 0004); null = not set. */
+  readingStatus: ReadingStatus | null;
   lastOpenedAt: string | null;
   createdAt: string;
   /** Set once the PDF's own highlights were imported (P11); null = not yet. */
@@ -43,6 +53,7 @@ export type BookPatch = Partial<{
   pageCount: number;
   hasTextLayer: boolean;
   outline: unknown;
+  readingStatus: ReadingStatus | null;
 }>;
 
 export interface DocumentsRepo {

@@ -8,6 +8,8 @@ import {
   createPowerSyncAllHighlightsRepo,
   createPowerSyncAnnotationsRepo,
 } from "../annotations/powersync-annotations-repo";
+import type { ChapterProgressRepo } from "../chapters/chapter-progress-repo";
+import { createPowerSyncChapterProgressRepo } from "../chapters/powersync-chapter-progress-repo";
 import type { NotesRepo } from "../notes/notes-repo";
 import { createPowerSyncNotesRepo } from "../notes/powersync-notes-repo";
 import { createPowerSyncSettingsRepo } from "../settings/powersync-settings-repo";
@@ -28,6 +30,7 @@ export interface Services {
   notes: NotesRepo;
   settings: SettingsRepo;
   shelves: ShelvesRepo;
+  chapterProgress: ChapterProgressRepo;
   storage: StorageProvider;
 }
 
@@ -47,6 +50,7 @@ export function services(): Services {
       notes: createPowerSyncNotesRepo(),
       settings: createPowerSyncSettingsRepo(),
       shelves: createPowerSyncShelvesRepo(),
+      chapterProgress: createPowerSyncChapterProgressRepo(),
       storage: createSupabaseStorage(createClient(), publicEnv().NEXT_PUBLIC_SUPABASE_URL),
     };
   }

@@ -34,13 +34,13 @@ export function flatChapters(items: OutlineItem[]): Chapter[] {
  * The entries that count as "chapters" for the header, the progress line and the Next chapter
  * control: the top level, plus the second level when the top level is just a few parts.
  */
-export function chapterLevel(all: Chapter[]): Chapter[] {
+export function chapterLevel<T extends Chapter>(all: T[]): T[] {
   const top = all.filter((c) => c.depth === 0);
   return top.length >= 6 ? top : all.filter((c) => c.depth <= 1);
 }
 
 /** Index of the last chapter starting at or before `page` (-1 before the first). */
-export function chapterIndexAt(chapters: Chapter[], page: number): number {
+export function chapterIndexAt(chapters: readonly Chapter[], page: number): number {
   let found = -1;
   for (let i = 0; i < chapters.length; i++) {
     if ((chapters[i] as Chapter).page <= page) found = i;
@@ -51,7 +51,7 @@ export function chapterIndexAt(chapters: Chapter[], page: number): number {
 
 /** Share of the current chapter that has been reached, by pages (0..1). */
 export function chapterProgress(
-  chapters: Chapter[],
+  chapters: readonly Chapter[],
   index: number,
   page: number,
   pageCount: number,
@@ -67,7 +67,11 @@ export function chapterProgress(
  * The next chapter, once the reader is on the last page before it. Chapters of a single page never
  * offer it (the control would sit there all the time).
  */
-export function nextChapterAtEnd(chapters: Chapter[], index: number, page: number): Chapter | null {
+export function nextChapterAtEnd<T extends Chapter>(
+  chapters: readonly T[],
+  index: number,
+  page: number,
+): T | null {
   const cur = chapters[index];
   if (!cur) return null;
   const next = chapters.slice(index + 1).find((c) => c.page > cur.page);

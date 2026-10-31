@@ -30,8 +30,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  allDone,
+  type ChapterSummary,
+  hasChapterProgress,
+  progressScore,
+} from "@/lib/chapters/progress";
+import { useChapterSummaries } from "@/lib/chapters/use-chapter-summaries";
 import { UNDO_WINDOW_MS } from "@/lib/documents/config";
-import type { Book } from "@/lib/documents/documents-repo";
+import {
+  type Book,
+  READING_STATUS_LABELS,
+  READING_STATUSES,
+  type ReadingStatus,
+} from "@/lib/documents/documents-repo";
 import { keepOffline } from "@/lib/documents/offline";
 import { opfsList, opfsRemove } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
@@ -58,10 +70,20 @@ function lastOpened(book: Book): string {
   return when ? `Opened ${new Date(when).toLocaleDateString()}` : "Not opened yet";
 }
 
-function sortBooks(books: Book[], sort: Sort): Book[] {
+/** The label shown on a card: the user's own, else Finished once every chapter is done. */
+function effectiveStatus(book: Book, summary: ChapterSummary | undefined): ReadingStatus | null {
+  return book.readingStatus ?? (allDone(summary) ? "finished" : null);
+}
+
+function sortBooks(
+  books: Book[],
+  sort: Sort,
+  summaries: Map<string, ChapterSummary> | null,
+): Book[] {
   const copy = [...books];
+  const score = (b: Book) => progressScore(summaries?.get(b.id), b.percent);
   if (sort === "title") copy.sort((a, b) => a.title.localeCompare(b.title));
-  else if (sort === "progress") copy.sort((a, b) => b.percent - a.percent);
+  else if (sort === "progress") copy.sort((a, b) => score(b) - score(a));
   else {
     const key = (b: Book) => b.lastOpenedAt ?? b.createdAt;
     copy.sort((a, b) => key(b).localeCompare(key(a)));
@@ -77,6 +99,8 @@ export function LibraryView() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   const [view, setView] = useState<View>("grid");
+  const [statusFilter, setStatusFilter] = useState<ReadingStatus | "all">("all");
+  const summaries = useChapterSummaries();
   const [editing, setEditing] = useState<Book | null>(null);
   // Books whose PDF is stored on this device (opened once, or "Keep offline").
   const [offlineIds, setOfflineIds] = useState<Set<string>>(new Set());
@@ -148,10 +172,23 @@ export function LibraryView() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = (books ?? []).filter(
-      (b) => !q || b.title.toLowerCase().includes(q) || (b.author ?? "").toLowerCase().includes(q),
+      (b) =>
+        (!q || b.title.toLowerCase().includes(q) || (b.author ?? "").toLowerCase().includes(q)) &&
+        (statusFilter === "all" || effectiveStatus(b, summaries?.get(b.id)) === statusFilter),
     );
-    return sortBooks(filterByShelf(filtered, links ?? [], selectedShelf, shelves ?? []), sort);
-  }, [books, query, sort, links, shelves, selectedShelf]);
+    return sortBooks(
+      filterByShelf(filtered, links ?? [], selectedShelf, shelves ?? []),
+      sort,
+      summaries,
+    );
+  }, [books, query, sort, links, shelves, selectedShelf, statusFilter, summaries]);
+
+  const setStatus = useCallback(async (book: Book, status: ReadingStatus | null) => {
+    setBooks(
+      (all) => all?.map((b) => (b.id === book.id ? { ...b, readingStatus: status } : b)) ?? null,
+    );
+    await services().documents.update(book.id, { readingStatus: status });
+  }, []);
 
   const counts = useMemo(() => shelfCounts(shelves ?? [], links ?? []), [shelves, links]);
   // A shelf deleted on another device must not leave the library looking empty.
@@ -236,6 +273,20 @@ export function LibraryView() {
           <option value="title">Title</option>
           <option value="progress">Progress</option>
         </select>
+        <select
+          aria-label="Status"
+          data-testid="status-filter"
+          className="h-8 rounded-lg border bg-background px-2 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as ReadingStatus | "all")}
+        >
+          <option value="all">All statuses</option>
+          {READING_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {READING_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
         <Button
           variant={view === "grid" ? "secondary" : "ghost"}
           size="icon"
@@ -319,6 +370,8 @@ export function LibraryView() {
           <BookItem
             key={book.id}
             book={book}
+            summary={summaries?.get(book.id)}
+            onSetStatus={(status) => void setStatus(book, status)}
             cover={book.coverPath ? covers.get(book.coverPath) : undefined}
             view={view}
             offline={offlineIds.has(book.id)}
@@ -363,6 +416,8 @@ export function LibraryView() {
 
 function BookItem({
   book,
+  summary,
+  onSetStatus,
   cover,
   view,
   offline,
@@ -373,6 +428,8 @@ function BookItem({
   onDelete,
 }: {
   book: Book;
+  summary: ChapterSummary | undefined;
+  onSetStatus: (status: ReadingStatus | null) => void;
   cover?: string;
   view: View;
   offline: boolean;
@@ -383,6 +440,8 @@ function BookItem({
   onDelete: () => void;
 }) {
   const grid = view === "grid";
+  const status = effectiveStatus(book, summary);
+  const chapters = hasChapterProgress(summary) ? summary : null;
   const progressLine = libraryProgressLine({
     page: book.readingPage,
     pageCount: book.pageCount,
@@ -438,6 +497,17 @@ function BookItem({
               <DropdownMenuItem onSelect={onEdit}>Rename or edit author</DropdownMenuItem>
               <DropdownMenuItem onSelect={onShelves}>Shelves…</DropdownMenuItem>
               <DropdownMenuSeparator />
+              {READING_STATUSES.map((s) => (
+                <DropdownMenuItem key={s} data-testid={`mark-${s}`} onSelect={() => onSetStatus(s)}>
+                  Mark as: {READING_STATUS_LABELS[s]}
+                </DropdownMenuItem>
+              ))}
+              {book.readingStatus ? (
+                <DropdownMenuItem data-testid="mark-clear" onSelect={() => onSetStatus(null)}>
+                  Clear status
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -445,17 +515,61 @@ function BookItem({
         {book.author ? (
           <p className="truncate text-muted-foreground text-xs">{book.author}</p>
         ) : null}
-        <div
-          className="mt-1.5 h-1 overflow-hidden rounded-full bg-border"
-          role="progressbar"
-          aria-label="Reading progress"
-          aria-valuenow={Math.round(book.percent)}
-        >
-          <div className="h-full bg-primary" style={{ width: `${book.percent}%` }} />
-        </div>
+        {chapters && chapters.total <= 40 ? (
+          <div
+            className="mt-1.5 flex h-1 gap-px"
+            role="progressbar"
+            aria-label="Chapters done"
+            aria-valuemin={0}
+            aria-valuemax={chapters.total}
+            aria-valuenow={chapters.done}
+            data-testid="chapter-segments"
+          >
+            {chapters.segments.map((filled, i) => (
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: segments are positional
+                key={i}
+                data-filled={filled ? "true" : "false"}
+                className={cn("h-full flex-1 rounded-full", filled ? "bg-primary" : "bg-border")}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className="mt-1.5 h-1 overflow-hidden rounded-full bg-border"
+            role="progressbar"
+            aria-label="Reading progress"
+            aria-valuenow={Math.round(
+              chapters ? (chapters.done / chapters.total) * 100 : book.percent,
+            )}
+          >
+            <div
+              className="h-full bg-primary"
+              style={{
+                width: `${chapters ? (chapters.done / chapters.total) * 100 : book.percent}%`,
+              }}
+            />
+          </div>
+        )}
+        {chapters ? (
+          <p className="mt-1 truncate text-muted-foreground text-xs" data-testid="book-chapters">
+            {chapters.done} of {chapters.total} chapters
+          </p>
+        ) : summary && summary.done > 0 ? (
+          <p className="mt-1 truncate text-muted-foreground text-xs" data-testid="book-chapters">
+            {summary.done} {summary.done === 1 ? "chapter" : "chapters"} done
+          </p>
+        ) : null}
         {progressLine ? (
           <p className="mt-1 truncate text-muted-foreground text-xs" data-testid="book-progress">
             {progressLine}
+          </p>
+        ) : null}
+        {status ? (
+          <p className="mt-1" data-testid="book-status" data-status={status}>
+            <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs">
+              {READING_STATUS_LABELS[status]}
+            </span>
           </p>
         ) : null}
         <p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs">
