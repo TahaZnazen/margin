@@ -6,6 +6,7 @@ import {
   filterHighlights,
   fold,
   type HighlightQuery,
+  highlightTagFacets,
 } from "./highlights-list";
 
 let n = 0;
@@ -20,6 +21,7 @@ function entry(p: Partial<HighlightEntry>): HighlightEntry {
     pageStart: 0,
     quoteText: "quote",
     comment: null,
+    tags: [],
     anchorStatus: "anchored",
     createdAt: `2026-01-01T00:00:${String(n).padStart(2, "0")}Z`,
     updatedAt: "2026-01-01T00:00:00Z",
@@ -32,6 +34,7 @@ function entry(p: Partial<HighlightEntry>): HighlightEntry {
 const q = (p: Partial<HighlightQuery> = {}): HighlightQuery => ({
   text: "",
   colors: new Set(),
+  tags: new Set(),
   documentId: null,
   includeBookmarks: false,
   sort: "newest",
@@ -104,5 +107,40 @@ describe("booksOf", () => {
       { id: "d1", title: "Alpha" },
       { id: "d2", title: "Beta" },
     ]);
+  });
+});
+
+describe("tag filters", () => {
+  const t1 = entry({ id: "t1", tags: ["renal", "exam-2"], color: "key" });
+  const t2 = entry({ id: "t2", tags: ["renal"], color: "definition", comment: null });
+  const t3 = entry({ id: "t3", tags: [], color: "key" });
+  const pool = [t1, t2, t3];
+
+  it("narrows with AND", () => {
+    expect(ids(filterHighlights(pool, q({ tags: new Set(["renal"]) }))).sort()).toEqual([
+      "t1",
+      "t2",
+    ]);
+    expect(ids(filterHighlights(pool, q({ tags: new Set(["renal", "exam-2"]) })))).toEqual(["t1"]);
+  });
+  it("searches tags as text", () => {
+    expect(ids(filterHighlights(pool, q({ text: "exam-2" })))).toEqual(["t1"]);
+  });
+  it("counts what each chip would give", () => {
+    expect(highlightTagFacets(pool, q())).toEqual([
+      { tag: "renal", count: 2 },
+      { tag: "exam-2", count: 1 },
+    ]);
+    expect(highlightTagFacets(pool, q({ tags: new Set(["exam-2"]) }))).toEqual([
+      { tag: "exam-2", count: 1 },
+      { tag: "renal", count: 1 },
+    ]);
+    expect(highlightTagFacets(pool, q({ colors: new Set(["definition"]) }))).toEqual([
+      { tag: "renal", count: 1 },
+    ]);
+  });
+  it("color counts follow the tag filter", () => {
+    expect(colorCounts(pool, q({ tags: new Set(["exam-2"]) })).get("key")).toBe(1);
+    expect(colorCounts(pool, q({ tags: new Set(["exam-2"]) })).get("definition")).toBeUndefined();
   });
 });

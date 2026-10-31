@@ -167,7 +167,11 @@ export function createAnnotationStore(
       emit();
     },
 
-    update(id: string, patch: Partial<Pick<Annotation, "color" | "comment">>, key?: string) {
+    update(
+      id: string,
+      patch: Partial<Pick<Annotation, "color" | "comment" | "tags">>,
+      key?: string,
+    ) {
       const before = items.get(id);
       if (!before) return;
       const after: Annotation = { ...before, ...patch, updatedAt: new Date().toISOString() };

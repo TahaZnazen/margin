@@ -97,6 +97,7 @@ function useGlobalHighlightHits(enabled: boolean, query: string): HighlightEntry
     return filterHighlights(entries, {
       text,
       colors: new Set(),
+      tags: new Set(),
       documentId: null,
       includeBookmarks: true,
       sort: "newest",
@@ -407,6 +408,7 @@ const SHORTCUTS: { group: string; rows: [string[], string][] }[] = [
     rows: [
       [["1", "–", "5"], "Change color"],
       [["N"], "Edit the note"],
+      [["#"], "Edit tags"],
       [["J", "K"], "Next / previous highlight"],
       [["Delete"], "Remove it"],
       [["Ctrl/Cmd", "Z"], "Undo the last change"],

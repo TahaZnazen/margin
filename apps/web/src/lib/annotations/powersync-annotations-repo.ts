@@ -6,6 +6,7 @@ import type {
   AnnotationsRepo,
   HighlightEntry,
 } from "./annotations-repo";
+import { parseTags, serializeTags } from "./tags";
 
 type Row = {
   id: string;
@@ -16,6 +17,7 @@ type Row = {
   page_start: number;
   quote_text: string | null;
   comment: string | null;
+  tags: string | null;
   anchor_status: Annotation["anchorStatus"];
   created_at: string;
   updated_at: string;
@@ -42,6 +44,7 @@ function toAnnotation(row: Row): Annotation | null {
     pageStart: row.page_start,
     quoteText: row.quote_text,
     comment: row.comment,
+    tags: parseTags(row.tags),
     anchorStatus: row.anchor_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -54,7 +57,7 @@ export function createPowerSyncAnnotationsRepo(): AnnotationsRepo {
     async list(documentId) {
       const db = await syncedForRead();
       const rows = await db.getAll<Row>(
-        `SELECT id, document_id, kind, color, target, page_start, quote_text, comment, anchor_status, created_at, updated_at
+        `SELECT id, document_id, kind, color, target, page_start, quote_text, comment, tags, anchor_status, created_at, updated_at
          FROM annotations WHERE document_id = ? AND deleted_at IS NULL AND kind <> 'ink'
          ORDER BY page_start ASC`,
         [documentId],
@@ -68,7 +71,7 @@ export function createPowerSyncAnnotationsRepo(): AnnotationsRepo {
       await db.execute(
         `INSERT OR REPLACE INTO annotations
            (id, user_id, document_id, kind, color, target, page_start, quote_text, comment, tags, anchor_status, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT tags FROM annotations WHERE id = ?), '[]'), ?, ?, ?, NULL)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
         [
           a.id,
           syncUserId(),
@@ -79,7 +82,7 @@ export function createPowerSyncAnnotationsRepo(): AnnotationsRepo {
           a.pageStart,
           a.quoteText,
           a.comment,
-          a.id, // keeps the tags of a row that is saved again
+          serializeTags(a.tags),
           a.anchorStatus,
           a.createdAt,
           new Date().toISOString(),
@@ -109,7 +112,7 @@ export function createPowerSyncAllHighlightsRepo(): AllHighlightsRepo {
     async listAll() {
       const db = await syncedForRead();
       const rows = await db.getAll<EntryRow>(
-        `SELECT a.id, a.document_id, a.kind, a.color, a.target, a.page_start, a.quote_text, a.comment,
+        `SELECT a.id, a.document_id, a.kind, a.color, a.target, a.page_start, a.quote_text, a.comment, a.tags,
                 a.anchor_status, a.created_at, a.updated_at, d.title AS book_title, d.author AS book_author
          FROM annotations a JOIN documents d ON d.id = a.document_id
          WHERE a.deleted_at IS NULL AND d.deleted_at IS NULL

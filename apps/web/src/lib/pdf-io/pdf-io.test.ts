@@ -196,6 +196,7 @@ describe("round trip: export an annotated PDF, import it back", () => {
           kind: "highlight",
           color: o.color,
           comment: i % 2 ? `comment ${i}` : null,
+          tags: i % 3 === 0 ? ["renal", "exam-2"] : [],
           updatedAt: "2026-10-28T10:00:00Z",
           segments: [{ page: o.page, rects: o.rects }],
         }));
@@ -213,6 +214,7 @@ describe("round trip: export an annotated PDF, import it back", () => {
           expect(got, `quote on page ${o.page}: ${o.exact}`).toBeDefined();
           expect(got?.color).toBe(o.color);
           expect(got?.comment).toBe(annotations[i]?.comment ?? null);
+          expect(got?.tags).toEqual(annotations[i]?.tags ?? []);
           expect(got?.rects).toHaveLength(o.rects.length);
           got?.rects.forEach((r, k) => {
             worst = Math.max(worst, maxDelta(r, o.rects[k] as Rect));

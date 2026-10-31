@@ -16,6 +16,7 @@ const make = (id: string, page = 0): Annotation => ({
   pageStart: page,
   quoteText: "x",
   comment: null,
+  tags: [],
   anchorStatus: "anchored",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
@@ -71,6 +72,24 @@ describe("annotation store", () => {
     store.undo();
     await settle();
     expect(rows.get("a")?.color).toBe("example");
+  });
+
+  it("adding and removing a tag is one undo step each", async () => {
+    const { repo, rows } = fakeRepo();
+    const store = createAnnotationStore(repo, "d1");
+    store.create(make("a", 0));
+    store.update("a", { tags: ["renal"] });
+    store.update("a", { tags: ["renal", "exam-2"] });
+    expect(store.get("a")?.tags).toEqual(["renal", "exam-2"]);
+    store.undo();
+    expect(store.get("a")?.tags).toEqual(["renal"]);
+    store.redo();
+    expect(store.get("a")?.tags).toEqual(["renal", "exam-2"]);
+    store.undo();
+    store.undo();
+    expect(store.get("a")?.tags).toEqual([]);
+    await settle();
+    expect(rows.get("a")?.tags).toEqual([]);
   });
 
   it("coalesces keyed updates into one undo step", () => {

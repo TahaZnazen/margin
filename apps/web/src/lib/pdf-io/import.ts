@@ -14,6 +14,7 @@ import {
   PDFNumber,
   PDFString,
 } from "pdf-lib";
+import { splitContentsTags } from "../annotations/tags";
 import { nearestColor, pdfColorToRgb } from "./colors";
 import { type PageBox, pdfRectToRect, quadPointsToRects, visibleBox } from "./geometry";
 import { quoteFromRects } from "./quote";
@@ -94,6 +95,7 @@ export interface ImportedHighlight {
   rects: Rect[];
   color: HighlightColor;
   comment: string | null;
+  tags: string[];
   quote: Quote;
   /** True when no text was found under the rects and the quote is a placeholder. */
   noText: boolean;
@@ -139,12 +141,14 @@ export async function convertAnnotations(
         lines,
         measure,
       );
+      const { comment, tags } = splitContentsTags(a.contents);
       out.push({
         kind: "highlight",
         page: a.page,
         rects: lines,
         color: nearestColor(pdfColorToRgb(a.color)),
-        comment: a.contents,
+        comment,
+        tags,
         quote: found?.quote ?? { exact: NO_TEXT_QUOTE, prefix: "", suffix: "" },
         noText: !found,
       });

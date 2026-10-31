@@ -24,6 +24,7 @@ import {
 } from "react";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
 import { annotationStoreFor } from "@/lib/annotations/store";
+import { normalizeTags, tagCounts } from "@/lib/annotations/tags";
 import { services } from "@/lib/documents/services";
 import { buildCitation, copyRich } from "@/lib/reader/citation";
 import { uuidv7 } from "@/lib/uuid";
@@ -72,6 +73,12 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     [],
   );
   useEffect(() => setFocus((f) => (f && f.id === activeId ? f : null)), [activeId]);
+  const [tagFocus, setTagFocus] = useState<{ id: string; n: number } | null>(null);
+  const requestTagFocus = useCallback(
+    (id: string) => setTagFocus((f) => ({ id, n: (f?.n ?? 0) + 1 })),
+    [],
+  );
+  useEffect(() => setTagFocus((f) => (f && f.id === activeId ? f : null)), [activeId]);
   const [flash, setFlash] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -194,6 +201,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
           pageStart: union.segments[0].page,
           quoteText: union.quote.exact,
           comment: comments.length ? comments.join("\n\n") : null,
+          tags: normalizeTags(touching.flatMap((a) => a.tags)),
           anchorStatus: "anchored",
           updatedAt: new Date().toISOString(),
         };
@@ -235,6 +243,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
         pageStart: target.segments[0].page,
         quoteText: target.quote.exact,
         comment: null,
+        tags: [],
         anchorStatus: "anchored",
         createdAt: now,
         updatedAt: now,
@@ -271,6 +280,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
       pageStart: page,
       quoteText: null,
       comment: null,
+      tags: [],
       anchorStatus: "anchored",
       createdAt: now,
       updatedAt: now,
@@ -369,6 +379,10 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
           consume();
           requestFocus(act.id);
         }
+      } else if (key === "#" && act) {
+        // T is the theme key in the viewer, so tags use #.
+        consume();
+        requestTagFocus(act.id);
       } else if (key === "C" && event.shiftKey) {
         const quote = sel?.quote.exact ?? act?.quoteText;
         const pageIndex = sel?.segments[0].page ?? act?.pageStart;
@@ -397,7 +411,7 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [store, requestFocus]);
+  }, [store, requestFocus, requestTagFocus]);
 
   const onSelection = useCallback((target: AnnotationTarget | null) => {
     if (target && "quote" in target) {
@@ -473,6 +487,11 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
     return el ? el.getBoundingClientRect() : null;
   }, [activeId, wrapper]);
 
+  const bookTags = useMemo(
+    () => tagCounts(snap.items.map((i) => i.tags)).map((tag) => tag.tag),
+    [snap.items],
+  );
+
   let popover: ReactNode = null;
   if (active) {
     popover = (
@@ -484,6 +503,10 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
         color={active.color}
         comment={active.comment ?? ""}
         focusNonce={focus?.id === active.id ? focus.n : 0}
+        tags={active.tags}
+        bookTags={bookTags}
+        tagFocusNonce={tagFocus?.id === active.id ? tagFocus.n : 0}
+        onTags={(tags) => store.update(active.id, { tags: normalizeTags(tags) })}
         copied={copied}
         inNotebook={inNotebook.has(active.id)}
         onColor={(color) => store.update(active.id, { color })}

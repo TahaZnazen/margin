@@ -1,6 +1,7 @@
 import { DEFAULT_HIGHLIGHT_LABELS, type HighlightColor } from "@margin/annotation-model";
 import type { OutlineItem } from "@margin/reader";
 import { groupByChapter } from "@/lib/annotations/chapters";
+import { tagWords } from "@/lib/annotations/tags";
 import type { JsonNode } from "@/lib/notes/doc";
 
 export interface MarkdownAnnotation {
@@ -9,6 +10,7 @@ export interface MarkdownAnnotation {
   color: HighlightColor | null;
   quoteText: string | null;
   comment: string | null;
+  tags?: readonly string[];
   /** 0-based. */
   pageStart: number;
   /** Distance of the first rect from the top of the page, for reading order. */
@@ -57,6 +59,8 @@ function annotationBlock(
     `> **${label}** · p. ${a.pageStart + 1} · [Open in Margin](${deepLink(input.origin, input.documentId, a.id)})`,
   ];
   if (a.comment) lines.push("", ...a.comment.split("\n").map((l) => plain(l)));
+  const tags = tagWords(a.tags ?? []);
+  if (tags) lines.push("", `Tags: ${tags}`);
   return lines.join("\n");
 }
 

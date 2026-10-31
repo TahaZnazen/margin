@@ -4,6 +4,7 @@ import { HIGHLIGHT_COLORS, type HighlightColor } from "@margin/annotation-model"
 import { ClipboardCopyIcon, MessageSquareIcon, NotebookPenIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flags } from "@/config/flags";
+import { TagField } from "./tag-field";
 
 const COMMENT_DEBOUNCE_MS = 400;
 
@@ -16,6 +17,11 @@ export interface PopoverProps {
   comment: string;
   /** Changes whenever the comment field should take focus (the N key). */
   focusNonce: number;
+  tags?: readonly string[];
+  /** Tags used by the highlights of this book, for suggestions. */
+  bookTags?: readonly string[];
+  /** Changes whenever the tag field should take focus (the # key). */
+  tagFocusNonce?: number;
   copied: boolean;
   inNotebook?: boolean;
   onColor: (color: HighlightColor) => void;
@@ -23,6 +29,7 @@ export interface PopoverProps {
   onCopy: () => void;
   onDelete: () => void;
   onComment: (text: string) => void;
+  onTags?: (tags: string[]) => void;
 }
 
 const BTN =
@@ -94,7 +101,8 @@ export function AnnotationPopover(props: PopoverProps) {
       style={{ visibility: "hidden" }}
       // Keep the text selection alive while the buttons are used.
       onMouseDown={(e) => {
-        if (!(e.target instanceof HTMLTextAreaElement)) e.preventDefault();
+        if (!(e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement))
+          e.preventDefault();
       }}
     >
       <div className="flex items-center gap-1">
@@ -184,6 +192,14 @@ export function AnnotationPopover(props: PopoverProps) {
             timer.current = setTimeout(flush, COMMENT_DEBOUNCE_MS);
           }}
           onBlur={flush}
+        />
+      ) : null}
+      {mode === "edit" && props.onTags ? (
+        <TagField
+          tags={props.tags ?? []}
+          bookTags={props.bookTags ?? []}
+          focusNonce={props.tagFocusNonce ?? 0}
+          onChange={props.onTags}
         />
       ) : null}
     </div>

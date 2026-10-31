@@ -19,6 +19,8 @@ export interface Annotation {
   pageStart: number;
   quoteText: string | null;
   comment: string | null;
+  /** Normalized topic tags (`lib/annotations/tags.ts`), at most 10. */
+  tags: string[];
   anchorStatus: AnchorStatus;
   createdAt: string;
   updatedAt: string;

@@ -10,20 +10,28 @@ import { useMemo, useState } from "react";
 import { DRAG_TYPE, NoteEditor, type QuoteHost } from "@/components/notes/note-editor";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
 import { groupByChapter } from "@/lib/annotations/chapters";
+import { hasAllTags, tagFacets } from "@/lib/annotations/tags";
 import type { useNotebook } from "@/lib/notes/use-notebook";
 
 type Notebook = ReturnType<typeof useNotebook>;
+
+const textOf = (a: Annotation) =>
+  [a.quoteText ?? "", a.comment ?? "", a.tags.join(" ")]
+    .join(String.fromCharCode(10))
+    .toLowerCase();
 
 export function filterItems(
   items: readonly Annotation[],
   colors: ReadonlySet<HighlightColor>,
   query: string,
+  tags: ReadonlySet<string> = new Set(),
 ): Annotation[] {
   const q = query.trim().toLowerCase();
   return items.filter((a) => {
     if (colors.size > 0 && !(a.color && colors.has(a.color))) return false;
+    if (!hasAllTags(a.tags, tags)) return false;
     if (!q) return true;
-    return `${a.quoteText ?? ""}\n${a.comment ?? ""}`.toLowerCase().includes(q);
+    return textOf(a).includes(q);
   });
 }
 
@@ -90,6 +98,19 @@ function Item({
       {a.comment ? (
         <p className="mt-1 line-clamp-3 text-muted-foreground" data-testid="annot-comment">
           {a.comment}
+        </p>
+      ) : null}
+      {a.tags.length > 0 ? (
+        <p className="mt-1 flex flex-wrap gap-1" data-testid="annot-tags">
+          {a.tags.map((t) => (
+            <span
+              key={t}
+              className="rounded-full bg-accent px-2 py-0.5 text-xs"
+              data-testid="annot-tag"
+            >
+              #{t}
+            </span>
+          ))}
         </p>
       ) : null}
       <div className="mt-1.5 flex items-center gap-2 text-xs">
@@ -176,14 +197,30 @@ export function SidePanel(props: SidePanelProps) {
   } = props;
   const [colors, setColors] = useState<ReadonlySet<HighlightColor>>(new Set());
   const [query, setQuery] = useState("");
+  const [tags, setTags] = useState<ReadonlySet<string>>(new Set());
 
   const shown = useMemo(() => items.filter((i) => i.kind !== "bookmark"), [items]);
   const counts = useMemo(() => {
     const out = new Map<HighlightColor, number>();
-    for (const a of shown) if (a.color) out.set(a.color, (out.get(a.color) ?? 0) + 1);
+    for (const a of shown.filter((x) => hasAllTags(x.tags, tags)))
+      if (a.color) out.set(a.color, (out.get(a.color) ?? 0) + 1);
     return out;
-  }, [shown]);
-  const filtered = useMemo(() => filterItems(shown, colors, query), [shown, colors, query]);
+  }, [shown, tags]);
+  const filtered = useMemo(
+    () => filterItems(shown, colors, query, tags),
+    [shown, colors, query, tags],
+  );
+  // Tag chips: the tags of what the other filters leave, with the count each would give.
+  const tagChips = useMemo(
+    () => tagFacets(filterItems(shown, colors, query), tags),
+    [shown, colors, query, tags],
+  );
+  const toggleTag = (t: string) =>
+    setTags((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(t)) next.add(t);
+      return next;
+    });
   const groups = useMemo(() => groupByChapter(filtered, outline), [filtered, outline]);
 
   const toggle = (c: HighlightColor) =>
@@ -213,7 +250,7 @@ export function SidePanel(props: SidePanelProps) {
         <div className="space-y-2 border-b p-2">
           <Input
             type="search"
-            placeholder="Search quotes and comments"
+            placeholder="Search quotes, comments and tags"
             aria-label="Search annotations"
             data-testid="annot-search"
             value={query}
@@ -245,6 +282,31 @@ export function SidePanel(props: SidePanelProps) {
               </button>
             ))}
           </fieldset>
+          {tagChips.length > 0 ? (
+            <fieldset
+              className="m-0 flex min-w-0 flex-wrap gap-1 border-0 p-0"
+              aria-label="Filter by tag"
+              data-testid="tag-filters"
+            >
+              {tagChips.map(({ tag, count }) => (
+                <button
+                  key={tag}
+                  type="button"
+                  data-testid={`tag-filter-${tag}`}
+                  aria-pressed={tags.has(tag)}
+                  aria-label={`Tag ${tag}, ${count}`}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                    tags.has(tag) && "bg-accent ring-1 ring-foreground/30",
+                  )}
+                  onClick={() => toggleTag(tag)}
+                >
+                  #{tag}
+                  <span className="text-muted-foreground tabular-nums">{count}</span>
+                </button>
+              ))}
+            </fieldset>
+          ) : null}
         </div>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-2" data-testid="annot-list">
           {groups.length === 0 ? (

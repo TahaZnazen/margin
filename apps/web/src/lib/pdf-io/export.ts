@@ -1,5 +1,6 @@
 import type { HighlightColor, Rect } from "@margin/annotation-model";
 import { type PDFArray, PDFDict, PDFDocument, PDFName, type PDFPage, PDFString } from "pdf-lib";
+import { contentsWithTags } from "../annotations/tags";
 import { colorToRgb } from "./colors";
 import {
   boundsOf,
@@ -16,6 +17,8 @@ export interface ExportableAnnotation {
   kind: "highlight" | "area" | "bookmark";
   color: HighlightColor | null;
   comment: string | null;
+  /** Written as `#tag` words at the end of `/Contents`. */
+  tags?: readonly string[];
   updatedAt: string;
   segments: { page: number; rects: Rect[] }[];
 }
@@ -28,6 +31,12 @@ export function pdfDate(iso: string): string {
 }
 
 const BOOKMARK_SIZE = 20;
+
+/** `/Contents` for a highlight or area: the comment plus the tags as `#tag` words. */
+function contentsEntry(a: ExportableAnnotation) {
+  const contents = contentsWithTags(a.comment, a.tags ?? []);
+  return contents ? { Contents: PDFString.of(contents) } : {};
+}
 
 function addHighlight(
   doc: PDFDocument,
@@ -63,7 +72,7 @@ function addHighlight(
     C: color.map(round3),
     CA: 1,
     F: 4,
-    ...(a.comment ? { Contents: PDFString.of(a.comment) } : {}),
+    ...contentsEntry(a),
     T: PDFString.of(author),
     NM: PDFString.of(a.id),
     M: PDFString.of(pdfDate(a.updatedAt)),
@@ -88,7 +97,7 @@ function addSquare(
     CA: 1,
     F: 4,
     BS: { W: 1.5 },
-    ...(a.comment ? { Contents: PDFString.of(a.comment) } : {}),
+    ...contentsEntry(a),
     T: PDFString.of(author),
     NM: PDFString.of(a.id),
     M: PDFString.of(pdfDate(a.updatedAt)),

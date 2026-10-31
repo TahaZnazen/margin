@@ -37,6 +37,7 @@ export function toAnnotation(
       target: parsed.data.target as AnnotationTarget,
       pageStart: item.page,
       quoteText: item.quote.exact,
+      tags: item.tags,
       anchorStatus: "anchored",
     };
   }
@@ -55,6 +56,7 @@ export function toAnnotation(
     target: parsed.data.target as AnnotationTarget,
     pageStart: item.page,
     quoteText: null,
+    tags: [],
     anchorStatus: "anchored",
   };
 }

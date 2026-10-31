@@ -14,6 +14,7 @@ const annotations: MarkdownAnnotation[] = [
     color: "key",
     quoteText: "First line\nsecond <b>line</b>",
     comment: "My thought",
+    tags: ["renal", "exam-2"],
     pageStart: 2,
   },
   {
@@ -88,6 +89,11 @@ describe("Markdown export", () => {
     expect(md).toContain("My thought");
     expect(md).toContain("**Memorize** · p. 41");
     expect(md).toContain("- **Check this** · p. 6 ·");
+  });
+
+  it("lists the tags of a highlight", () => {
+    expect(md).toContain("Tags: #renal #exam-2");
+    expect(md.match(/Tags:/g)).toHaveLength(1);
   });
 
   it("turns quote nodes into linked blockquotes and degrades deleted ones", () => {

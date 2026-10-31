@@ -4,6 +4,7 @@ import type { HighlightColor } from "@margin/annotation-model";
 import type { OutlineItem } from "@margin/reader";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
+import { parseTags } from "@/lib/annotations/tags";
 import { opfsRead } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { asDoc, type JsonNode } from "@/lib/notes/doc";
@@ -47,6 +48,7 @@ const markdownAnnotation = (a: Annotation): MarkdownAnnotation => ({
   color: a.color,
   quoteText: a.quoteText,
   comment: a.comment,
+  tags: a.tags,
   pageStart: a.pageStart,
   top: a.target.segments[0].rects[0]?.[1],
 });
@@ -57,6 +59,7 @@ const rowAnnotation = (r: Row): MarkdownAnnotation => ({
   color: (r.color as HighlightColor | null) ?? null,
   quoteText: (r.quote_text as string | null) ?? null,
   comment: (r.comment as string | null) ?? null,
+  tags: parseTags(r.tags),
   pageStart: Number(r.page_start),
   top: (r.target as { segments?: { rects?: number[][] }[] } | null)?.segments?.[0]?.rects?.[0]?.[1],
 });
@@ -117,6 +120,7 @@ export async function exportBookPdf(documentId: string, bytes?: ArrayBuffer | Ui
       kind: a.kind,
       color: a.color,
       comment: a.comment,
+      tags: a.tags,
       updatedAt: a.updatedAt,
       segments: a.target.segments.map((seg) => ({ page: seg.page, rects: seg.rects })),
     })),

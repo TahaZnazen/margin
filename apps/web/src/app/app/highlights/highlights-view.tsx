@@ -13,8 +13,23 @@ import {
   filterHighlights,
   type HighlightQuery,
   type HighlightSort,
+  highlightTagFacets,
 } from "@/lib/annotations/highlights-list";
 import { useAllHighlights, useHighlightLabels } from "@/lib/annotations/use-all-highlights";
+
+/** Small tag chips under a highlight's text. */
+function TagChips({ tags, testId }: { tags: readonly string[]; testId: string }) {
+  if (tags.length === 0) return null;
+  return (
+    <span className="mt-1.5 flex flex-wrap gap-1" data-testid={testId}>
+      {tags.map((t) => (
+        <span key={t} className="rounded-full bg-accent px-2 py-0.5 text-xs" data-testid="hl-tag">
+          #{t}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:ring-2 focus-visible:ring-ring";
@@ -56,6 +71,7 @@ function Item({ a, labels }: { a: HighlightEntry; labels: Record<HighlightColor,
               {a.comment}
             </span>
           ) : null}
+          <TagChips tags={a.tags} testId="hl-tags" />
           <span
             className="mt-1.5 block truncate text-muted-foreground text-xs"
             data-testid="hl-book"
@@ -76,6 +92,7 @@ export function HighlightsView() {
   // Filtering a large library runs per keystroke; deferring it keeps typing responsive.
   const query = useDeferredValue(text);
   const [colors, setColors] = useState<ReadonlySet<HighlightColor>>(new Set());
+  const [tags, setTags] = useState<ReadonlySet<string>>(new Set());
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [includeBookmarks, setIncludeBookmarks] = useState(false);
   const [sort, setSort] = useState<HighlightSort>("newest");
@@ -88,22 +105,36 @@ export function HighlightsView() {
       filterHighlights(entries ?? [], {
         text: query,
         colors,
+        tags,
         documentId: bookFilter,
         includeBookmarks,
         sort,
       } satisfies HighlightQuery),
-    [entries, query, colors, bookFilter, includeBookmarks, sort],
+    [entries, query, colors, tags, bookFilter, includeBookmarks, sort],
   );
   const counts = useMemo(
     () =>
       colorCounts(entries ?? [], {
         text: query,
         colors,
+        tags,
         documentId: bookFilter,
         includeBookmarks,
         sort,
       }),
-    [entries, query, colors, bookFilter, includeBookmarks, sort],
+    [entries, query, colors, tags, bookFilter, includeBookmarks, sort],
+  );
+  const tagChips = useMemo(
+    () =>
+      highlightTagFacets(entries ?? [], {
+        text: query,
+        colors,
+        tags,
+        documentId: bookFilter,
+        includeBookmarks,
+        sort,
+      }),
+    [entries, query, colors, tags, bookFilter, includeBookmarks, sort],
   );
   const hasBookmarks = (entries ?? []).some((e) => e.kind === "bookmark");
 
@@ -111,6 +142,13 @@ export function HighlightsView() {
     setColors((prev) => {
       const next = new Set(prev);
       if (!next.delete(c)) next.add(c);
+      return next;
+    });
+
+  const toggleTag = (t: string) =>
+    setTags((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(t)) next.add(t);
       return next;
     });
 
@@ -130,7 +168,7 @@ export function HighlightsView() {
       <div className="flex flex-wrap items-center gap-2">
         <Input
           type="search"
-          placeholder="Search quotes, comments and books"
+          placeholder="Search quotes, comments, tags and books"
           aria-label="Search highlights"
           data-testid="hl-search"
           className="min-w-48 flex-1 sm:max-w-sm"
@@ -201,6 +239,31 @@ export function HighlightsView() {
           </label>
         ) : null}
       </div>
+      {tagChips.length > 0 ? (
+        <fieldset
+          className="m-0 flex min-w-0 flex-wrap gap-1 border-0 p-0"
+          aria-label="Filter by tag"
+          data-testid="hl-tag-filters"
+        >
+          {tagChips.map(({ tag, count }) => (
+            <button
+              key={tag}
+              type="button"
+              data-testid={`hl-tag-filter-${tag}`}
+              aria-pressed={tags.has(tag)}
+              aria-label={`Tag ${tag}, ${count}`}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs focus-visible:ring-2 focus-visible:ring-ring",
+                tags.has(tag) && "bg-accent ring-1 ring-foreground/30",
+              )}
+              onClick={() => toggleTag(tag)}
+            >
+              #{tag}
+              <span className="text-muted-foreground tabular-nums">{count}</span>
+            </button>
+          ))}
+        </fieldset>
+      ) : null}
       <p className="text-muted-foreground text-xs" aria-live="polite" data-testid="hl-total">
         {shown.length} {shown.length === 1 ? "highlight" : "highlights"}
       </p>
