@@ -289,8 +289,8 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
         annotationId: a.annotationId,
       });
       void copyRich(text, html).then((ok) => {
-        if (!ok) return toast.error("Could not copy");
-        toast.success("Copied with link");
+        if (!ok) return toast.error("Could not copy", { id: "copy-citation" });
+        toast.success("Copied with link", { id: "copy-citation" });
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       });

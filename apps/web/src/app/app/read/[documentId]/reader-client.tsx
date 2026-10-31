@@ -991,7 +991,9 @@ function Reading({
       onAdd={addToNotebook}
       onCopyLink={(id) => {
         void copyRich(deepLink(window.location.origin, documentId, id)).then((ok) =>
-          ok ? toast.success("Link copied") : toast.error("Could not copy the link"),
+          ok
+            ? toast.success("Link copied", { id: "copy-link" })
+            : toast.error("Could not copy the link", { id: "copy-link" }),
         );
       }}
       onDelete={(id) => {
