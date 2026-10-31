@@ -81,8 +81,8 @@ describe("PDF contents", () => {
     });
   });
   it("works without a comment", () => {
-    expect(contentsWithTags(null, ["a"])).toBe("#a");
-    expect(splitContentsTags("#a #b")).toEqual({ comment: null, tags: ["a", "b"] });
+    expect(contentsWithTags(null, ["a"])).toBe("Tags: #a");
+    expect(splitContentsTags("Tags: #a #b")).toEqual({ comment: null, tags: ["a", "b"] });
   });
   it("leaves comments without tags alone", () => {
     expect(contentsWithTags("hi", [])).toBe("hi");

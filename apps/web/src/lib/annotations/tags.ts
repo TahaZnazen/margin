@@ -67,23 +67,28 @@ export const tagWords = (tags: readonly string[]): string =>
     .map((t) => `#${t}`)
     .join(" ");
 
-/** `/Contents` of a PDF annotation: the comment, then the tags as `#tag` words on a last line. */
+const TAGS_PREFIX = "Tags: ";
+
+/** `/Contents` of a PDF annotation: the comment, then a last line `Tags: #a #b` (the prefix keeps real comments ending in hashtags safe). */
 export function contentsWithTags(comment: string | null, tags: readonly string[]): string | null {
   const words = tagWords(tags);
   if (!words) return comment;
-  return comment ? `${comment}\n${words}` : words;
+  const line = `${TAGS_PREFIX}${words}`;
+  return comment ? `${comment}\n${line}` : line;
 }
 
 const TAG_WORD = /^#[\p{L}\p{N}_-]+$/u;
 
-/** Inverse of `contentsWithTags`: a last line made only of `#tag` words is read as the tags. */
+/** Inverse of `contentsWithTags`: only a last line `Tags: #a #b` is read as the tags. */
 export function splitContentsTags(contents: string | null): {
   comment: string | null;
   tags: string[];
 } {
   if (!contents) return { comment: contents, tags: [] };
   const lines = contents.split("\n");
-  const words = (lines.at(-1) ?? "").trim().split(/\s+/);
+  const last = (lines.at(-1) ?? "").trim();
+  if (!last.startsWith(TAGS_PREFIX)) return { comment: contents, tags: [] };
+  const words = last.slice(TAGS_PREFIX.length).trim().split(/\s+/);
   if (words.length === 0 || !words.every((w) => TAG_WORD.test(w))) {
     return { comment: contents, tags: [] };
   }
