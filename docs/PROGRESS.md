@@ -161,3 +161,10 @@ Each prompt in `prompts/` appends an entry here when it finishes, newest last. L
 **Commands:** `pnpm e2e -- focus-mode.spec.ts`. Evidence: `evidence/q4-focus-mode/`.
 **Deviations from the prompt or docs:** the desktop idle fade of the top bar (build item 3) is not built; the peek mechanism is separate from the phone scroll-hide because focus mode needs a timed peek rather than scroll direction. The phone header now has one more icon, so the book title is squeezed further (it was already narrow).
 **Follow-ups:** phone header is crowded (consider moving Export/Focus into a menu); desktop idle fade could reuse `peek`.
+
+## Q5 — Copy with link · 2026-10-31 · branch q5-copy-link
+**Built:** "Copy with citation" (popover button, Shift+C) now writes `"quote" — Title, p. N` + newline + a deep link (`#a=<annotationId>` for a saved highlight, `#p=<page>` for a plain selection) as `text/plain` and an escaped `text/html` (blockquote + link) via `ClipboardItem`, falling back to `writeText`; never throws. Toast "Copied with link". Each annotations-panel item has a "Copy link" icon button (copies the `#a=` link, toast "Link copied") inside the existing `role="group"` card.
+**Key files:** `apps/web/src/lib/reader/citation.ts` (+ test), `use-annotation-layer.tsx`, `side-panel.tsx`, `reader-client.tsx`, `apps/web/e2e/copy-link.spec.ts`.
+**Commands:** `pnpm e2e -- copy-link.spec.ts`.
+**Deviations from the prompt or docs:** reuses `pageLink` (chapters) and `deepLink` (export) for the URLs. Shift+C with both a fresh selection and an active highlight copies the selection (page link), as before.
+**Follow-ups:** none.

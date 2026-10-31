@@ -11,6 +11,7 @@ import {
   unionTargets,
 } from "@margin/annotation-model";
 import type { OverlayContext, PdfViewerHandle } from "@margin/reader";
+import { toast } from "@margin/ui/components/sonner";
 import {
   type ReactNode,
   type RefObject,
@@ -24,6 +25,7 @@ import {
 import type { Annotation } from "@/lib/annotations/annotations-repo";
 import { annotationStoreFor } from "@/lib/annotations/store";
 import { services } from "@/lib/documents/services";
+import { buildCitation, copyRich } from "@/lib/reader/citation";
 import { uuidv7 } from "@/lib/uuid";
 import { markCreate, PageAnnotations } from "./annotation-overlay";
 import { AnnotationPopover } from "./annotation-popover";
@@ -277,17 +279,23 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
   }, [snap.items, page, sha256, documentId, store]);
 
   const copyCitation = useCallback(
-    (a: { quote: string; page: number }) => {
-      const text = `"${a.quote}" — ${title}, p. ${a.page + 1}`;
-      navigator.clipboard
-        ?.writeText(text)
-        .then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        })
-        .catch(() => undefined);
+    (a: { quote: string; page: number; annotationId?: string | null }) => {
+      const { text, html } = buildCitation({
+        quote: a.quote,
+        title,
+        page: a.page,
+        origin: window.location.origin,
+        documentId,
+        annotationId: a.annotationId,
+      });
+      void copyRich(text, html).then((ok) => {
+        if (!ok) return toast.error("Could not copy");
+        toast.success("Copied with link");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
     },
-    [title],
+    [title, documentId],
   );
 
   const step = useCallback(
@@ -366,7 +374,11 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
         const pageIndex = sel?.segments[0].page ?? act?.pageStart;
         if (quote && pageIndex !== undefined) {
           consume();
-          a.copyCitation({ quote, page: pageIndex });
+          a.copyCitation({
+            quote,
+            page: pageIndex,
+            annotationId: sel ? null : act?.id,
+          });
         }
       } else if ((key === "Delete" || key === "Backspace") && act) {
         consume();
@@ -477,7 +489,12 @@ export function useAnnotationLayer(args: AnnotationLayerArgs) {
         onColor={(color) => store.update(active.id, { color })}
         onNote={() => requestFocus(active.id)}
         onCopy={() =>
-          active.quoteText && copyCitation({ quote: active.quoteText, page: active.pageStart })
+          active.quoteText &&
+          copyCitation({
+            quote: active.quoteText,
+            page: active.pageStart,
+            annotationId: active.id,
+          })
         }
         onDelete={() => {
           store.remove(active.id);

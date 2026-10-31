@@ -55,6 +55,7 @@ import type { Book, ReadingState } from "@/lib/documents/documents-repo";
 import { opfsRead, opfsWrite } from "@/lib/documents/opfs";
 import { services } from "@/lib/documents/services";
 import { exportBookMarkdown, exportBookPdf } from "@/lib/export/client";
+import { deepLink } from "@/lib/export/markdown";
 import { useNotebook } from "@/lib/notes/use-notebook";
 import { warmPage } from "@/lib/pwa/pwa";
 import {
@@ -65,6 +66,7 @@ import {
   nextChapterAtEnd,
   pageFromHash,
 } from "@/lib/reader/chapters";
+import { copyRich } from "@/lib/reader/citation";
 import { formatDuration, paceSecondsPerPage, secondsLeftInRange } from "@/lib/reader/pace";
 import { FindBar } from "./find-bar";
 import { ReaderSidebar, SIDEBAR_TABS, type SidebarTab } from "./reader-sidebar";
@@ -987,6 +989,11 @@ function Reading({
       onJump={(id) => host.jump(id)}
       onHover={setHoverId}
       onAdd={addToNotebook}
+      onCopyLink={(id) => {
+        void copyRich(deepLink(window.location.origin, documentId, id)).then((ok) =>
+          ok ? toast.success("Link copied") : toast.error("Could not copy the link"),
+        );
+      }}
       onDelete={(id) => {
         setHoverId(null);
         layer.removeHighlight(id);
