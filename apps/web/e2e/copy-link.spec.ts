@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Browser, expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 // Q5: copy with link (plain + HTML clipboard variants, #a= / #p= links), panel "Copy link".
@@ -35,8 +35,6 @@ let bookUrl = "";
 const EVIDENCE = "../../evidence/q5-copy-link";
 
 const L1 = "Line one of the ruler paragraph begins exactly at x = 72 pt.";
-const L2 = "Every line in this block uses 11 pt Helvetica with 15 pt leading.";
-const L3 = "Highlights that span several lines must stay aligned at any zoom.";
 
 async function signIn(page: Page) {
   await page.goto("/sign-in");
@@ -60,26 +58,6 @@ async function selectText(page: Page, text: string) {
     selection?.addRange(range);
   }, text);
   await expect(page.getByTestId("annotation-popover")).toBeVisible();
-}
-
-async function openBook(page: Page) {
-  await page.goto(bookUrl);
-  await expect(page.locator(".mr-canvas").first()).toBeVisible();
-  await expect(page.getByTestId("highlight-rect").first()).toBeVisible();
-}
-
-async function openPanel(page: Page, tab: "annotations" | "notebook") {
-  if (!(await page.getByTestId("right-panel").isVisible())) {
-    await page.getByTestId("panel-toggle").click();
-  }
-  await page.getByTestId(`tab-${tab}`).click();
-}
-
-async function second(browser: Browser) {
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  await signIn(page);
-  return { ctx, page };
 }
 
 test.describe.configure({ mode: "serial" });
