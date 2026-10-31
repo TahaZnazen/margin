@@ -74,7 +74,7 @@ describe("tagCounts", () => {
 describe("PDF contents", () => {
   it("appends tags on a last line and reads them back", () => {
     const contents = contentsWithTags("My thought", ["renal", "exam-2"]);
-    expect(contents).toBe("My thought\n#renal #exam-2");
+    expect(contents).toBe("My thought\nTags: #renal #exam-2");
     expect(splitContentsTags(contents)).toEqual({
       comment: "My thought",
       tags: ["renal", "exam-2"],
