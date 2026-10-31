@@ -84,10 +84,11 @@ test("command palette: open a book, go to a page, chapters, annotations, theme, 
   await expect(page.getByTestId("book")).toHaveCount(2, { timeout: 30_000 });
   const palette = page.getByTestId("command-palette");
 
-  // Open a book by (fuzzy) title.
+  // Open a book by (fuzzy) title. The PDF has no Title metadata, so its title comes from the
+  // biggest line on page 1 ("Chapter 1 The Beginning"), not the file name.
   await page.keyboard.press("Control+k");
   await expect(palette).toBeVisible();
-  await page.getByRole("combobox", { name: "Command" }).fill("chaptrd handbk");
+  await page.getByRole("combobox", { name: "Command" }).fill("chaptr begnning");
   await expect(palette.getByRole("option")).toHaveCount(1);
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/app/read/${ids.chaptered}$`));

@@ -33,7 +33,7 @@ import {
   ZoomInIcon,
   ZoomOutIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { palette, usePalette } from "@/lib/commands/store";
 import type { Book } from "@/lib/documents/documents-repo";
@@ -86,8 +86,13 @@ export function CommandPalette() {
   useGlobalKeys();
   const { open, query, help, reader } = usePalette();
   const router = useRouter();
+  const pathname = usePathname();
   const { preference, setPreference } = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
+  // The open book is left out of "Books": opening it again does nothing, and it would compete
+  // with its own chapters for Enter.
+  const openBookId = pathname.match(/^\/app\/read\/([^/]+)/)?.[1];
+  const otherBooks = books.filter((b) => b.id !== openBookId);
   const [selected, setSelected] = useState("");
 
   useEffect(() => {
@@ -279,9 +284,9 @@ export function CommandPalette() {
                   ))}
                 </CommandGroup>
               ) : null}
-              {books.length > 0 ? (
+              {otherBooks.length > 0 ? (
                 <CommandGroup heading="Books">
-                  {books.map((b) => (
+                  {otherBooks.map((b) => (
                     <CommandItem
                       key={b.id}
                       value={`book ${b.title} ${b.author ?? ""} ${b.id}`}
