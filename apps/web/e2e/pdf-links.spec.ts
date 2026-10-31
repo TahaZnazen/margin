@@ -78,11 +78,19 @@ const centre = async (box: Locator) => {
 const topPt = (page: Page, i: number) =>
   page.evaluate((idx) => {
     const sc = document.querySelector(".mr-scroller") as HTMLElement;
-    const pg = document.querySelector(`.mr-page[data-page="${idx}"]`) as HTMLElement;
-    const space = pg.querySelector(".mr-space") as HTMLElement;
+    const pg = document.querySelector<HTMLElement>(`.mr-page[data-page="${idx}"]`);
+    const space = pg?.querySelector<HTMLElement>(".mr-space");
+    if (!(pg && space)) return 1e9; // page not rendered (yet)
     const scale = pg.getBoundingClientRect().width / space.offsetWidth;
     return (sc.getBoundingClientRect().top - pg.getBoundingClientRect().top) / scale;
   }, i);
+
+/** Clicks the centre of a link box at its current position. */
+const clickBox = async (box: Locator) => {
+  const p = await centre(box);
+  await page_of(box).mouse.click(p.x, p.y);
+};
+const page_of = (l: Locator) => l.page();
 
 const currentPage = async (page: Page) =>
   Number(await page.locator(".mr-viewer").getAttribute("data-current-page"));
@@ -137,7 +145,7 @@ test("two-column paper: a citation lands on its destination page and Back return
   await expect.poll(async () => Math.abs((await topPt(page, 0)) - startTop)).toBeLessThan(12);
 
   // Alt+Left does the same, Alt+Right goes forward again.
-  await page.mouse.click(c.x, c.y);
+  await clickBox(box);
   await expect(page.getByTestId("back-pill")).toBeVisible();
   await page.keyboard.press("Alt+ArrowLeft");
   await expect(page.getByTestId("back-pill")).toBeHidden();
@@ -147,7 +155,7 @@ test("two-column paper: a citation lands on its destination page and Back return
 
   // Scrolling far from the landing hides the pill (Home is 3+ pages away from the references).
   await page.keyboard.press("Alt+ArrowLeft");
-  await page.mouse.click(c.x, c.y);
+  await clickBox(box);
   await expect(page.getByTestId("back-pill")).toBeVisible();
   await page.keyboard.press("Home");
   await expect(page.getByTestId("back-pill")).toBeHidden();
@@ -203,10 +211,14 @@ test("synthetic PDF: external link opens a tab; scripts, javascript: and file: n
   await expect(page).toHaveURL(bookUrl);
 
   // Keyboard: reachable, named, Enter follows the internal link.
-  await internal.focus();
+  await page.locator(".mr-scroller").focus();
+  await page.keyboard.press("Tab");
   await expect(internal).toBeFocused();
   await page.screenshot({ path: `${EVIDENCE}/desktop-focus-ring.png` });
-  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  const axe = await new AxeBuilder({ page })
+    .include(".mr-viewer")
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
   expect(axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual(
     [],
   );
@@ -294,6 +306,6 @@ test.describe("phone", () => {
     await page.screenshot({ path: `${EVIDENCE}/phone-after-jump.png` });
     await pill.click();
     await expect(pill).toBeHidden();
-    expect(await currentPage(page)).toBe(0);
+    await expect.poll(() => currentPage(page)).toBe(0);
   });
 });

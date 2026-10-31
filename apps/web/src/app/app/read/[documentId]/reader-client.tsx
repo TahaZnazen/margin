@@ -622,9 +622,12 @@ function Reading({
   const navRef = useRef<NavHistory>(emptyHistory);
   const [pill, setPill] = useState<{ from: NavPos; landing: number } | null>(null);
   const pillShown = useRef(false);
+  // The viewer reports its page a moment after the jump; "far away" only counts once it got there.
+  const arrived = useRef(false);
   pillShown.current = pill !== null;
   const onLinkJump = useCallback(({ from, to }: { from: NavPos; to: NavPos }) => {
     navRef.current = pushJump(navRef.current, from);
+    arrived.current = false;
     setPill({ from, landing: to.page });
   }, []);
   const stepHistory = useCallback((dir: "back" | "forward") => {
@@ -644,7 +647,12 @@ function Reading({
   }, [pill]);
   const shownPage = state?.page ?? 0;
   useEffect(() => {
-    if (pill && farFromLanding(pill.landing, shownPage)) setPill(null);
+    if (!pill) return;
+    if (!arrived.current) {
+      arrived.current = Math.abs(shownPage - pill.landing) <= 1;
+      return;
+    }
+    if (farFromLanding(pill.landing, shownPage)) setPill(null);
   }, [pill, shownPage]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
