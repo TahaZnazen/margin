@@ -89,7 +89,7 @@ export function FindBar({
             e.preventDefault();
             e.stopPropagation();
             close();
-          } else if (e.key === "Enter") {
+          } else if (e.key === "Enter" && !e.nativeEvent.isComposing) {
             e.preventDefault();
             step(e.shiftKey ? -1 : 1);
           }
