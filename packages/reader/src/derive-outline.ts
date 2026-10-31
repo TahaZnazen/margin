@@ -124,6 +124,41 @@ export function deriveChapters(pages: readonly (PageText | null)[]): OutlineItem
   return kept.map((f) => ({ title: f.title, page: f.page, offsetPt: 0, children: [] }));
 }
 
+const MAX_DERIVED_TITLE = 120;
+
+/**
+ * A title from the first page: the topmost group of lines set in the largest font, when that font
+ * is clearly bigger than the page's body text. Undefined when nothing stands out (scans, slides
+ * with uniform type), so the caller keeps the file name.
+ */
+export function deriveTitle(first: PageText | null | undefined): string | undefined {
+  if (!first) return undefined;
+  const body = bodyFontSize([first]);
+  const lines = lineGroups(first.runs).filter((l) => /\p{L}/u.test(l.text));
+  if (body <= 0 || lines.length === 0) return undefined;
+  const biggest = Math.max(...lines.map((l) => l.size));
+  if (biggest < body * 1.15) return undefined;
+  const picked: Line[] = [];
+  for (const line of lines) {
+    if (Math.abs(line.size - biggest) > 0.5) {
+      if (picked.length) break;
+      continue;
+    }
+    const last = picked.at(-1);
+    if (last && line.y - last.y > biggest * 2.2) break;
+    picked.push(line);
+  }
+  const text = picked
+    .map((l) => l.text)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length < 3) return undefined;
+  if (text.length <= MAX_DERIVED_TITLE) return text;
+  const cut = text.slice(0, MAX_DERIVED_TITLE - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 60)).trimEnd()}…`;
+}
+
 export interface DeriveOptions {
   signal?: AbortSignal;
   /** Pages scanned at most (from the start). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveChapters } from "./derive-outline";
+import { deriveChapters, deriveTitle } from "./derive-outline";
 import type { PageText, TextRun } from "./engine";
 
 const run = (str: string, y: number, fontSize: number, x = 72): TextRun => ({
@@ -51,5 +51,31 @@ describe("deriveChapters", () => {
   });
   it("returns nothing for plain text", () => {
     expect(deriveChapters([page(body(30)), page(body(30))])).toEqual([]);
+  });
+});
+
+describe("deriveTitle", () => {
+  it("takes the topmost largest lines, joined, and ignores smaller text", () => {
+    const p = page([
+      run("Area-law entanglement from", 60, 18, 100),
+      run("quantum geometry", 82, 18, 100),
+      run("Jane Author", 120, 11),
+      ...body(30),
+    ]);
+    expect(deriveTitle(p)).toBe("Area-law entanglement from quantum geometry");
+  });
+  it("returns undefined when nothing stands out", () => {
+    expect(deriveTitle(page(body(30)))).toBeUndefined();
+    expect(deriveTitle(null)).toBeUndefined();
+    expect(deriveTitle(page([]))).toBeUndefined();
+  });
+  it("caps long titles at 120 characters on a word boundary", () => {
+    const long = Array.from({ length: 40 }, () => "wordy").join(" ");
+    const out = deriveTitle(page([run(long, 60, 20), ...body(30)])) ?? "";
+    expect(out.length).toBeLessThanOrEqual(120);
+    expect(out.endsWith("…")).toBe(true);
+  });
+  it("skips a lone drop cap", () => {
+    expect(deriveTitle(page([run("T", 60, 40), ...body(30)]))).toBeUndefined();
   });
 });

@@ -16,3 +16,29 @@ export async function rejectReason(file: File): Promise<string | null> {
 }
 
 export const titleFromFileName = (name: string) => name.replace(/\.pdf$/i, "").trim() || "Untitled";
+
+const sameName = (a: string, b: string) =>
+  a
+    .replace(/\.pdf$/i, "")
+    .trim()
+    .toLowerCase() ===
+  b
+    .replace(/\.pdf$/i, "")
+    .trim()
+    .toLowerCase();
+
+/**
+ * The title to store: the PDF's own Title metadata when it says something, else the biggest line
+ * on page 1 (`derived`), else the file name. Metadata that just repeats the file name counts as
+ * empty (many tools fill it in that way).
+ */
+export function chooseTitle(
+  metadataTitle: string | undefined,
+  fileName: string,
+  derived: string | undefined,
+): string {
+  const fromName = titleFromFileName(fileName);
+  const meta = metadataTitle?.trim();
+  if (meta && !sameName(meta, fileName) && !sameName(meta, fromName)) return meta;
+  return derived?.trim() || fromName;
+}

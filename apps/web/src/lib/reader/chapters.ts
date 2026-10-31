@@ -87,3 +87,19 @@ export function pageFromHash(hash: string, pageCount?: number): number | null {
 export function pageLink(origin: string, documentId: string, page: number): string {
   return `${origin}/app/read/${documentId}#p=${page + 1}`;
 }
+
+export const MAX_BOOKMARK_NAME = 80;
+
+/** What a bookmark row shows: its own name (the comment) if set, and where it sits. */
+export function bookmarkLabel(
+  outline: OutlineItem[],
+  page: number,
+  comment: string | null | undefined,
+): { name: string | null; chapter: string | null; where: string; title: string } {
+  const all = flatChapters(outline);
+  const chapter = all[chapterIndexAt(all, page)]?.title ?? null;
+  const name = comment?.replace(/\s+/g, " ").trim() || null;
+  const pageLabel = `p. ${page + 1}`;
+  const where = chapter ? `${chapter} · ${pageLabel}` : pageLabel;
+  return { name, chapter, where, title: name ?? (chapter ? where : `Page ${page + 1}`) };
+}

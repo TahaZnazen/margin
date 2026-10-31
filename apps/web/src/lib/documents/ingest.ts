@@ -1,5 +1,5 @@
-import { pdfJsEngine, ReaderError } from "@margin/reader";
-import { titleFromFileName } from "./validate";
+import { deriveTitle, pdfJsEngine, ReaderError } from "@margin/reader";
+import { chooseTitle } from "./validate";
 
 const COVER_WIDTH_PX = 360;
 
@@ -39,7 +39,7 @@ export async function extractMetadata(file: File): Promise<Extracted> {
       hasTextLayer = Boolean((await doc.pageText(1).catch(() => null))?.text.trim());
     }
     return {
-      title: title ?? titleFromFileName(file.name),
+      title: chooseTitle(title, file.name, deriveTitle(firstPage)),
       author: author ?? null,
       pageCount: doc.pageCount,
       hasTextLayer,

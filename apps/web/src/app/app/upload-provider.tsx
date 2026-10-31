@@ -170,8 +170,11 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         const extracted = await extractMetadata(rt.file);
         if (rt.cancelled) throw new Error("Cancelled");
         rt.cover = extracted.cover;
+        // Never overwrite a title the user renamed while the metadata was being read.
+        const current = await documents.get(documentId).catch(() => null);
+        const renamed = current !== null && current.title !== titleFromFileName(rt.file.name);
         await documents.update(documentId, {
-          title: extracted.title,
+          ...(renamed ? {} : { title: extracted.title }),
           author: extracted.author,
           pageCount: extracted.pageCount,
           hasTextLayer: extracted.hasTextLayer,

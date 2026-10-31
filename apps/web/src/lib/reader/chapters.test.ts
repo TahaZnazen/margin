@@ -1,6 +1,7 @@
 import type { OutlineItem } from "@margin/reader";
 import { describe, expect, it } from "vitest";
 import {
+  bookmarkLabel,
   chapterIndexAt,
   chapterLevel,
   chapterProgress,
@@ -49,5 +50,23 @@ describe("chapters", () => {
     expect(pageFromHash("#p=0")).toBeNull();
     expect(pageFromHash("#a=1")).toBeNull();
     expect(pageLink("http://x", "id", 2)).toBe("http://x/app/read/id#p=3");
+  });
+});
+
+describe("bookmarkLabel", () => {
+  const outline = [item("I Intro", 0), item("II Preliminaries", 1), item("III Results", 5)];
+  it("names the chapter and page", () => {
+    const l = bookmarkLabel(outline, 1, null);
+    expect(l.title).toBe("II Preliminaries · p. 2");
+    expect(l.name).toBeNull();
+  });
+  it("uses the comment as the name and keeps the place underneath", () => {
+    const l = bookmarkLabel(outline, 6, "  Proof of\n theorem 2 ");
+    expect(l.title).toBe("Proof of theorem 2");
+    expect(l.where).toBe("III Results · p. 7");
+  });
+  it("falls back to the page without chapters", () => {
+    expect(bookmarkLabel([], 0, null).title).toBe("Page 1");
+    expect(bookmarkLabel([], 3, "Mine").where).toBe("p. 4");
   });
 });

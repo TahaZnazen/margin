@@ -87,7 +87,7 @@ describe("Markdown export", () => {
     );
     expect(md).toContain("My thought");
     expect(md).toContain("**Memorize** · p. 41");
-    expect(md).toContain("- p. 6 ·");
+    expect(md).toContain("- **Check this** · p. 6 ·");
   });
 
   it("turns quote nodes into linked blockquotes and degrades deleted ones", () => {
@@ -101,6 +101,26 @@ describe("Markdown export", () => {
     expect(md).toContain("> Deleted text\n>\n> p. 10 · highlight deleted");
   });
 
+  it("lists a named bookmark by its name, with its page and link", () => {
+    expect(md).toContain(
+      "- **Check this** · p. 6 · [Open in Margin](https://margin.test/app/read/" + DOC + "#a=b)",
+    );
+  });
+  it("lists an unnamed bookmark by page only", () => {
+    const plain = bookToMarkdown({
+      documentId: DOC,
+      title: "T",
+      author: null,
+      exportedAt: "2026-10-28T10:00:00.000Z",
+      origin: "https://margin.test",
+      outline: [],
+      annotations: [
+        { id: "z", kind: "bookmark", color: null, quoteText: null, comment: null, pageStart: 2 },
+      ],
+      notebook: null,
+    });
+    expect(plain).toContain("- p. 3 · [Open in Margin](");
+  });
   it("never emits raw HTML", () => {
     expect(md).not.toMatch(/(^|[^\\])<[a-z/]/i);
   });

@@ -4,10 +4,10 @@ import { type OutlineItem, type ReaderDocument, Thumbnails } from "@margin/reade
 import { toast } from "@margin/ui/components/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@margin/ui/components/tabs";
 import { cn } from "@margin/ui/lib/utils";
-import { ChevronRightIcon, LinkIcon } from "lucide-react";
+import { ChevronRightIcon, LinkIcon, PencilIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
-import { pageLink } from "@/lib/reader/chapters";
+import { bookmarkLabel, MAX_BOOKMARK_NAME, pageLink } from "@/lib/reader/chapters";
 import { formatDuration, secondsLeftInRange } from "@/lib/reader/pace";
 
 export type SidebarTab = "chapters" | "pages" | "bookmarks";
@@ -52,6 +52,8 @@ export interface ReaderSidebarProps {
   bookmarks: readonly Annotation[];
   onGoTo: (page: number, offsetPt?: number) => void;
   onBookmark: (id: string) => void;
+  /** Sets (or clears, with "") the bookmark's name: its comment, through the undoable store. */
+  onRenameBookmark: (id: string, name: string) => void;
 }
 
 export function ReaderSidebar(props: ReaderSidebarProps) {
@@ -92,21 +94,106 @@ export function ReaderSidebar(props: ReaderSidebarProps) {
         ) : (
           <ul>
             {props.bookmarks.map((b) => (
-              <li key={b.id}>
-                <button
-                  type="button"
-                  data-testid="bookmark-item"
-                  className="min-h-9 w-full rounded-md px-2 py-1.5 text-left hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => props.onBookmark(b.id)}
-                >
-                  Page {b.pageStart + 1}
-                </button>
-              </li>
+              <BookmarkRow
+                key={b.id}
+                bookmark={b}
+                outline={props.outline}
+                onOpen={() => props.onBookmark(b.id)}
+                onRename={(name) => props.onRenameBookmark(b.id, name)}
+              />
             ))}
           </ul>
         )}
       </TabsContent>
     </Tabs>
+  );
+}
+
+function BookmarkRow({
+  bookmark,
+  outline,
+  onOpen,
+  onRename,
+}: {
+  bookmark: Annotation;
+  outline: OutlineItem[];
+  onOpen: () => void;
+  onRename: (name: string) => void;
+}) {
+  const label = useMemo(
+    () => bookmarkLabel(outline, bookmark.pageStart, bookmark.comment),
+    [outline, bookmark.pageStart, bookmark.comment],
+  );
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const done = useRef(false);
+
+  function start() {
+    done.current = false;
+    setDraft(label.name ?? "");
+    setEditing(true);
+  }
+  function finish(save: boolean) {
+    if (done.current) return;
+    done.current = true;
+    setEditing(false);
+    if (save && draft.trim() !== (label.name ?? "")) onRename(draft.trim());
+  }
+
+  if (editing) {
+    return (
+      <li className="px-2 py-1">
+        <input
+          // biome-ignore lint/a11y/noAutofocus: the field appears because the user asked to rename
+          autoFocus
+          data-testid="bookmark-name-input"
+          aria-label="Bookmark name"
+          value={draft}
+          maxLength={MAX_BOOKMARK_NAME}
+          placeholder={label.chapter ?? `Page ${bookmark.pageStart + 1}`}
+          className="h-9 w-full rounded-md border bg-background px-2 text-sm focus-visible:ring-2 focus-visible:ring-ring"
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => finish(true)}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return;
+            if (event.key === "Enter") finish(true);
+            else if (event.key === "Escape") {
+              event.stopPropagation();
+              finish(false);
+            }
+          }}
+        />
+      </li>
+    );
+  }
+  return (
+    <li className="group flex items-center gap-1">
+      <button
+        type="button"
+        data-testid="bookmark-item"
+        className="flex min-h-9 min-w-0 flex-1 flex-col rounded-md px-2 py-1.5 text-left hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onOpen}
+        onDoubleClick={start}
+      >
+        <span data-testid="bookmark-title" className="truncate">
+          {label.title}
+        </span>
+        {label.name ? (
+          <span data-testid="bookmark-where" className="truncate text-muted-foreground text-xs">
+            {label.where}
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        data-testid="bookmark-rename"
+        aria-label={`Rename bookmark on page ${bookmark.pageStart + 1}`}
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={start}
+      >
+        <PencilIcon className="size-4" />
+      </button>
+    </li>
   );
 }
 

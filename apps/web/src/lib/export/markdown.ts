@@ -189,9 +189,12 @@ export function bookToMarkdown(input: BookMarkdownInput): string {
   if (bookmarks.length) {
     out.push("## Bookmarks", "");
     for (const b of [...bookmarks].sort((x, y) => x.pageStart - y.pageStart)) {
-      const note = b.comment ? ` · ${plain(b.comment.replace(/\s+/g, " "))}` : "";
+      const name = b.comment ? plain(b.comment.replace(/\s+/g, " ").trim()) : "";
+      const link = `[Open in Margin](${deepLink(input.origin, input.documentId, b.id)})`;
       out.push(
-        `- p. ${b.pageStart + 1} · [Open in Margin](${deepLink(input.origin, input.documentId, b.id)})${note}`,
+        name
+          ? `- **${name}** · p. ${b.pageStart + 1} · ${link}`
+          : `- p. ${b.pageStart + 1} · ${link}`,
       );
     }
     out.push("");

@@ -828,6 +828,7 @@ function Reading({
         if (narrow) setSheetOpen(false);
         layer.jumpTo(id);
       }}
+      onRenameBookmark={(id, name) => layer.store.update(id, { comment: name || null }, `bm-${id}`)}
     />
   );
 

@@ -99,8 +99,17 @@ export function SettingsForm() {
         <p className="font-medium text-sm">Highlight labels</p>
         {HIGHLIGHT_COLORS.map((color) => (
           <div key={color} className="flex items-center gap-3">
-            <label htmlFor={`label-${color}`} className="w-24 text-muted-foreground text-sm">
-              {color}
+            <label
+              htmlFor={`label-${color}`}
+              className="flex w-36 shrink-0 items-center gap-2 text-muted-foreground text-sm"
+            >
+              <span
+                aria-hidden="true"
+                data-testid="label-swatch"
+                className="size-3.5 shrink-0 rounded-full"
+                style={{ background: `var(--hl-${color}-chip)` }}
+              />
+              {DEFAULT_HIGHLIGHT_LABELS[color]}
             </label>
             <Input
               id={`label-${color}`}
