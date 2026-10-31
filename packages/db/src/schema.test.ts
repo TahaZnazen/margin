@@ -130,7 +130,7 @@ describe("migration 0004 (ADR 0004) is additive", () => {
     expect(onDocuments[1]).toMatch(/ADD CONSTRAINT "documents_reading_status_check"/);
   });
   it("grants powersync_role SELECT only through a guarded DO block", () => {
-    const blocks = statements.filter((s) => /^DO/i.test(s));
+    const blocks = statements.filter((s) => s.startsWith("DO "));
     expect(blocks).toHaveLength(1);
     expect(blocks[0]).toMatch(
       /IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'powersync_role'\)/,
