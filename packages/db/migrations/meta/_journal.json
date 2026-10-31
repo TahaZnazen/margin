@@ -29,6 +29,13 @@
       "when": 1793024603746,
       "tag": "0003_powersync_publication",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793435390761,
+      "tag": "0004_chapter_progress",
+      "breakpoints": true
     }
   ]
 }

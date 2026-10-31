@@ -49,7 +49,13 @@ describe("sync config (powersync.yaml)", () => {
 
   it("matches the tables in the powersync publication", () => {
     const migration = read("../../db/migrations/0003_powersync_publication.sql");
-    const published = [...migration.matchAll(/public\.(\w+)/g)].map((match) => match[1]);
+    const added = read("../../db/migrations/0004_chapter_progress.sql");
+    const published = [
+      ...[...migration.matchAll(/public\.(\w+)/g)].map((match) => match[1]),
+      ...[...added.matchAll(/alter publication powersync add table public\.(\w+)/gi)].map(
+        (match) => match[1],
+      ),
+    ];
     expect(published).toEqual([...TABLE_NAMES]);
   });
 });

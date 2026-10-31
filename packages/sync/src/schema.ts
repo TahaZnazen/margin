@@ -36,6 +36,7 @@ const documents = new Table(
     ai_status: column.text,
     annotations_imported_at: column.text,
     last_opened_at: column.text,
+    reading_status: column.text,
     ...timestampColumns,
   },
   { indexes: { sha256: ["sha256"], last_opened: ["-last_opened_at"] } },
@@ -110,6 +111,20 @@ const user_settings = new Table({
   ...timestampColumns,
 });
 
+const chapter_progress = new Table(
+  {
+    ...ownedColumns,
+    document_id: column.text,
+    chapter_key: column.text,
+    title: column.text,
+    page_start: column.integer,
+    done_at: column.text,
+    source: column.text,
+    ...timestampColumns,
+  },
+  { indexes: { document: ["document_id"] } },
+);
+
 export const AppSchema = new Schema({
   documents,
   reading_state,
@@ -118,6 +133,7 @@ export const AppSchema = new Schema({
   collections,
   collection_documents,
   user_settings,
+  chapter_progress,
 });
 
 export type LocalDatabase = (typeof AppSchema)["types"];
@@ -128,3 +144,4 @@ export type LocalNote = LocalDatabase["notes"];
 export type LocalCollection = LocalDatabase["collections"];
 export type LocalCollectionDocument = LocalDatabase["collection_documents"];
 export type LocalUserSettings = LocalDatabase["user_settings"];
+export type LocalChapterProgress = LocalDatabase["chapter_progress"];

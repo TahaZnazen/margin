@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import { pgConnection } from "./connection";
@@ -96,5 +97,36 @@ describe("pgConnection", () => {
         env({ DATABASE_URL: "postgresql://u:p@h/db", DATABASE_CA_CERT: "./no-such-file.crt" }),
       ),
     ).toThrow(/doesn't exist/);
+  });
+});
+
+describe("migration 0004 (ADR 0004) is additive", () => {
+  const sql = readFileSync(
+    new URL("../migrations/0004_chapter_progress.sql", import.meta.url),
+    "utf8",
+  );
+  const statements = sql
+    .split("--> statement-breakpoint")
+    .map((part) =>
+      part
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("--"))
+        .join("\n")
+        .trim(),
+    )
+    .filter(Boolean);
+
+  it("never rewrites or removes existing data, columns, constraints or policies", () => {
+    for (const statement of statements) {
+      expect(statement, statement).not.toMatch(/^(UPDATE|DELETE|TRUNCATE|DROP)\b/i);
+      expect(statement, statement).not.toMatch(/\b(DROP|RENAME|ALTER COLUMN)\b/i);
+    }
+  });
+
+  it("only alters documents by adding the reading_status column and its check", () => {
+    const onDocuments = statements.filter((s) => /^ALTER TABLE "documents"/i.test(s));
+    expect(onDocuments).toHaveLength(2);
+    expect(onDocuments[0]).toMatch(/ADD COLUMN "reading_status" text;?$/);
+    expect(onDocuments[1]).toMatch(/ADD CONSTRAINT "documents_reading_status_check"/);
   });
 });

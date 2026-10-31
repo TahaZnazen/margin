@@ -8,7 +8,7 @@
 # Clients filter `deleted_at IS NULL` in their queries.
 #
 # Deploy and validate: see packages/sync/README.md. Keep the table list in step with the
-# `powersync` publication (packages/db/migrations/0003) and the client schema (src/schema.ts);
+# `powersync` publication (packages/db/migrations/0003 and the later `alter publication` lines) and the client schema (src/schema.ts);
 # src/schema.test.ts checks all three.
 config:
   edition: 3
@@ -24,3 +24,4 @@ streams:
       - SELECT * FROM collections WHERE user_id = auth.user_id()
       - SELECT * FROM collection_documents WHERE user_id = auth.user_id()
       - SELECT * FROM user_settings WHERE user_id = auth.user_id()
+      - SELECT * FROM chapter_progress WHERE user_id = auth.user_id()

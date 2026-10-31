@@ -40,6 +40,10 @@ import { authenticatedRole, authUid, authUsers } from "drizzle-orm/supabase";
 export const READ_STATUSES = ["uploading", "readable", "failed"] as const;
 export const AI_STATUSES = ["none", "pending", "processing", "ready", "failed"] as const;
 export const THEMES = ["light", "sepia", "dark", "system"] as const;
+/** documents.reading_status (ADR 0004); null = not set. */
+export const READING_STATUSES = ["to_read", "reading", "finished"] as const;
+/** chapter_progress.source (ADR 0004): ticked by the user, or by the opt-in auto-mark setting. */
+export const CHAPTER_SOURCES = ["manual", "auto"] as const;
 
 /** The tables of this contract, in dependency order. All of them sync to the client. */
 export const TABLE_NAMES = [
@@ -50,6 +54,7 @@ export const TABLE_NAMES = [
   "collections",
   "collection_documents",
   "user_settings",
+  "chapter_progress",
 ] as const;
 export type TableName = (typeof TABLE_NAMES)[number];
 
@@ -111,6 +116,8 @@ export const documents = pgTable(
     aiStatus: text("ai_status", { enum: AI_STATUSES }).notNull().default("none"),
     annotationsImportedAt: timestamptz("annotations_imported_at"),
     lastOpenedAt: timestamptz("last_opened_at"),
+    /** ADR 0004. null = not set. */
+    readingStatus: text("reading_status", { enum: READING_STATUSES }),
     ...timestamps(),
   },
   (t) => [
@@ -122,6 +129,7 @@ export const documents = pgTable(
     check("documents_sha256_check", sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
     check("documents_read_status_check", oneOf(t.readStatus, READ_STATUSES)),
     check("documents_ai_status_check", oneOf(t.aiStatus, AI_STATUSES)),
+    check("documents_reading_status_check", oneOf(t.readingStatus, READING_STATUSES)),
     ...ownRowsOnly("documents", t.userId),
   ],
 );
@@ -294,6 +302,43 @@ export const userSettings = pgTable(
   ],
 );
 
+/**
+ * ADR 0004. One row per (document, chapter). `id` is a deterministic UUIDv5 of
+ * (document_id, chapter_key), so two devices marking the same chapter write the same row.
+ * Un-marking sets done_at to null instead of deleting.
+ */
+export const chapterProgress = pgTable(
+  "chapter_progress",
+  {
+    ...owned(),
+    documentId: uuid("document_id").notNull(),
+    /** Stable key: `o:<outline path>:<normalized title>`, or `d:<page>:<title>` for guessed headings. */
+    chapterKey: text("chapter_key").notNull(),
+    /** Snapshot for display and export. */
+    title: text("title").notNull(),
+    /** 0-based first page, for sorting and export. */
+    pageStart: integer("page_start").notNull(),
+    /** null = not done. */
+    doneAt: timestamptz("done_at"),
+    source: text("source", { enum: CHAPTER_SOURCES }).notNull().default("manual"),
+    ...timestamps(),
+  },
+  (t) => [
+    unique("chapter_progress_user_id_document_id_chapter_key_key").on(
+      t.userId,
+      t.documentId,
+      t.chapterKey,
+    ),
+    foreignKey({
+      name: "chapter_progress_document_fk",
+      columns: [t.userId, t.documentId],
+      foreignColumns: [documents.userId, documents.id],
+    }).onDelete("cascade"),
+    check("chapter_progress_source_check", oneOf(t.source, CHAPTER_SOURCES)),
+    ...ownRowsOnly("chapter_progress", t.userId),
+  ],
+);
+
 /** Every table, keyed by its SQL name. */
 export const tables = {
   documents,
@@ -303,4 +348,5 @@ export const tables = {
   collections,
   collection_documents: collectionDocuments,
   user_settings: userSettings,
+  chapter_progress: chapterProgress,
 } as const satisfies Record<TableName, unknown>;

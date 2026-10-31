@@ -78,6 +78,15 @@ function rowsFor(userId: string): Record<TableName, Row> {
       document_id: documentId,
     },
     user_settings: { id: randomUUID(), user_id: userId, theme: "dark" },
+    chapter_progress: {
+      id: randomUUID(),
+      user_id: userId,
+      document_id: documentId,
+      chapter_key: "o:1:introduction",
+      title: "Introduction",
+      page_start: 0,
+      done_at: new Date().toISOString(),
+    },
   };
 }
 
@@ -173,21 +182,70 @@ describe.each(TABLE_NAMES)("table %s", (table) => {
 });
 
 describe("cross-user references", () => {
-  it.each(["reading_state", "annotations", "notes", "collection_documents"] as const)(
-    "B can't attach its own %s row to A's document",
-    async (table) => {
-      const bRows = rowsFor(b.id);
-      if (table === "collection_documents") {
-        // B's own collection exists, so only the document reference can fail.
-        const { error } = await b.client.from("collections").insert(bRows.collections);
-        expect(error).toBeNull();
-      }
-      const forged = { ...bRows[table], document_id: aRows.documents.id };
-      const { error } = await b.client.from(table).insert(forged);
-      // The composite foreign key (user_id, document_id) → documents(user_id, id) finds no match.
-      expect(error?.code).toBe("23503");
-    },
-  );
+  it.each([
+    "reading_state",
+    "annotations",
+    "notes",
+    "collection_documents",
+    "chapter_progress",
+  ] as const)("B can't attach its own %s row to A's document", async (table) => {
+    const bRows = rowsFor(b.id);
+    if (table === "collection_documents") {
+      // B's own collection exists, so only the document reference can fail.
+      const { error } = await b.client.from("collections").insert(bRows.collections);
+      expect(error).toBeNull();
+    }
+    const forged = { ...bRows[table], document_id: aRows.documents.id };
+    const { error } = await b.client.from(table).insert(forged);
+    // The composite foreign key (user_id, document_id) → documents(user_id, id) finds no match.
+    expect(error?.code).toBe("23503");
+  });
+});
+
+describe("chapter_progress (ADR 0004)", () => {
+  it("rejects a second row for the same chapter of the same document", async () => {
+    const duplicate = { ...aRows.chapter_progress, id: randomUUID() };
+    const { error } = await a.client.from("chapter_progress").insert(duplicate);
+    expect(error?.code).toBe("23505");
+  });
+
+  it("rejects an unknown source", async () => {
+    const bad = {
+      ...aRows.chapter_progress,
+      id: randomUUID(),
+      chapter_key: "o:2:x",
+      source: "bot",
+    };
+    const { error } = await a.client.from("chapter_progress").insert(bad);
+    expect(error?.code).toBe("23514");
+  });
+
+  it("un-marking (done_at = null) is an update, and updated_at moves", async () => {
+    const before = await adminRead("chapter_progress");
+    const { error } = await a.client
+      .from("chapter_progress")
+      .update({ done_at: null })
+      .eq("id", aRows.chapter_progress.id);
+    expect(error).toBeNull();
+    const after = await adminRead("chapter_progress");
+    expect(after?.done_at).toBeNull();
+    expect(String(after?.updated_at) > String(before?.updated_at)).toBe(true);
+  });
+
+  it("documents.reading_status accepts the three states and null, and rejects others", async () => {
+    for (const status of ["to_read", "reading", "finished", null]) {
+      const { error } = await a.client
+        .from("documents")
+        .update({ reading_status: status })
+        .eq("id", aRows.documents.id);
+      expect(error, String(status)).toBeNull();
+    }
+    const bad = await a.client
+      .from("documents")
+      .update({ reading_status: "abandoned" })
+      .eq("id", aRows.documents.id);
+    expect(bad.error?.code).toBe("23514");
+  });
 });
 
 describe("storage bucket `documents`", () => {

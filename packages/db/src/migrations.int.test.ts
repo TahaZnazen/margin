@@ -63,6 +63,29 @@ describe("migrations", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLE_NAMES].sort());
   });
 
+  it("0004 added chapter_progress and documents.reading_status, with grants and the updated_at trigger", async () => {
+    const column = await client.query(
+      `SELECT is_nullable FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'documents' AND column_name = 'reading_status'`,
+    );
+    expect(column.rows).toEqual([{ is_nullable: "YES" }]);
+    const trigger = await client.query(
+      `SELECT tgname FROM pg_trigger WHERE tgname = 'chapter_progress_set_updated_at'`,
+    );
+    expect(trigger.rowCount).toBe(1);
+    const grants = await client.query<{ privilege_type: string }>(
+      `SELECT privilege_type FROM information_schema.role_table_grants
+       WHERE grantee = 'authenticated' AND table_schema = 'public' AND table_name = 'chapter_progress'
+       ORDER BY privilege_type`,
+    );
+    expect(grants.rows.map((row) => row.privilege_type)).toEqual([
+      "DELETE",
+      "INSERT",
+      "SELECT",
+      "UPDATE",
+    ]);
+  });
+
   it("create the private documents bucket with its four owner policies", async () => {
     const bucket = await client.query(
       "SELECT public, file_size_limit FROM storage.buckets WHERE id = 'documents'",
