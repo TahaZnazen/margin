@@ -153,21 +153,26 @@ test("a rejected or missing Fullscreen API never breaks focus mode", async ({ pa
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
-  test("the header button enters; a tap shows the header, which leaves again", async ({ page }) => {
+  test("no header button on a phone (the title stays readable); F enters, a tap peeks the header", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
     await openBook(page);
-    await page.screenshot({ path: `${EVIDENCE}/phone-normal.png` });
-    await inFocus(page).tap();
+    await page.screenshot({ path: `${EVIDENCE}/validator-phone-header.png` });
+    // Phones already have the auto-hiding top bar: no Focus button squeezing the title.
+    await expect(inFocus(page)).toBeHidden();
+    const title = await page.getByTestId("book-title").boundingBox();
+    // Back at the pre-Q4 width (about 46 px; with the button it was about 10).
+    expect(title?.width ?? 0).toBeGreaterThan(40);
+    // A hardware keyboard (or the palette) still reaches focus mode.
+    await page.keyboard.press("f");
     await expect(header(page)).toHaveAttribute("data-hidden", "true");
     await page.screenshot({ path: `${EVIDENCE}/phone-focus.png` });
     await page.locator(".mr-scroller").tap({ position: { x: 190, y: 400 } });
     await expect(header(page)).not.toHaveAttribute("data-hidden", "true");
     await page.screenshot({ path: `${EVIDENCE}/phone-peek.png` });
-    await inFocus(page).tap();
-    await expect(inFocus(page)).toHaveAttribute("aria-pressed", "false");
+    await page.keyboard.press("Escape");
     await expect(header(page)).not.toHaveAttribute("data-hidden", "true");
-    // Header controls stay inside the viewport.
-    const box = await inFocus(page).boundingBox();
-    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
+    await expect(page.getByTestId("focus-toggle")).toBeHidden();
   });
 });

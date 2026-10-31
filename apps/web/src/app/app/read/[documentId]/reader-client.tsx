@@ -1011,7 +1011,7 @@ function Reading({
       <Button
         variant="ghost"
         size="icon"
-        className="size-8 sm:size-9"
+        className="hidden size-9 sm:inline-flex"
         aria-label="Focus mode"
         title="Focus mode (F)"
         aria-pressed={focus}
