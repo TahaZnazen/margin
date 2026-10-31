@@ -404,7 +404,11 @@ function UploadTray() {
               )}
             </div>
             {job.stage === "uploading" || job.stage === "finishing" ? (
-              <Progress value={job.progress * 100} className="mt-2" />
+              <Progress
+                value={job.progress * 100}
+                className="mt-2"
+                aria-label={`${job.name} upload progress`}
+              />
             ) : null}
             <p
               className={cn(

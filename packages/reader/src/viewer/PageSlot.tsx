@@ -36,6 +36,8 @@ export interface PageSlotProps {
   onPainted: (index: number) => void;
   /** A link was activated (mouse hit-test or keyboard). */
   onLink?: (target: LinkTarget) => void;
+  /** Links join the Tab order only on the current page, so Tab can still leave the document. */
+  linksTabbable?: boolean;
 }
 
 /** CSS matrix that maps page space (points, top-left, unrotated) to the page box in pixels. */
@@ -96,7 +98,15 @@ const linkKey = (t: LinkTarget) =>
  * One link as a real control: focusable, named, activated by Enter. It takes no pointer events (the
  * text layer above the page must keep selecting text); the viewer hit-tests mouse clicks itself.
  */
-function LinkBox({ link, onLink }: { link: PageLink; onLink?: (target: LinkTarget) => void }) {
+function LinkBox({
+  link,
+  onLink,
+  tabbable,
+}: {
+  link: PageLink;
+  onLink?: (target: LinkTarget) => void;
+  tabbable: boolean;
+}) {
   const { rect, target } = link;
   const style = {
     left: rect[0],
@@ -114,6 +124,7 @@ function LinkBox({ link, onLink }: { link: PageLink; onLink?: (target: LinkTarge
         target="_blank"
         rel="noopener noreferrer"
         aria-label={externalLinkLabel(target.url)}
+        tabIndex={tabbable ? undefined : -1}
         style={style}
         onClick={(event) => event.stopPropagation()}
       />
@@ -127,6 +138,7 @@ function LinkBox({ link, onLink }: { link: PageLink; onLink?: (target: LinkTarge
       data-target-page={target.pageIndex}
       data-target-offset={target.offsetPt}
       aria-label={internalLinkLabel(target.pageIndex)}
+      tabIndex={tabbable ? undefined : -1}
       style={style}
       onClick={(event) => {
         event.stopPropagation();
@@ -147,6 +159,7 @@ function PageSlotImpl({
   renderOverlay,
   onPainted,
   onLink,
+  linksTabbable = true,
 }: PageSlotProps) {
   const { width: boxW, height: boxH } = rotatedSize(geometry);
   const cssW = boxW * scale;
@@ -283,6 +296,7 @@ function PageSlotImpl({
               key={`${link.rect.join(",")}-${linkKey(link.target)}`}
               link={link}
               onLink={onLink}
+              tabbable={linksTabbable}
             />
           ))}
         </div>

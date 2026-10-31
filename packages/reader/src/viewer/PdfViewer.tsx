@@ -949,6 +949,7 @@ export function PdfViewer({
           renderOverlay={renderPageOverlay}
           onPainted={onPainted}
           onLink={followLink}
+          linksTabbable={i === page}
         />,
       );
     }

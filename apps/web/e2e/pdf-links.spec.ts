@@ -215,10 +215,7 @@ test("synthetic PDF: external link opens a tab; scripts, javascript: and file: n
   await page.keyboard.press("Tab");
   await expect(internal).toBeFocused();
   await page.screenshot({ path: `${EVIDENCE}/desktop-focus-ring.png` });
-  const axe = await new AxeBuilder({ page })
-    .include(".mr-viewer")
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze();
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual(
     [],
   );

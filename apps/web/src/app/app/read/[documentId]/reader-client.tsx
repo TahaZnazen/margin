@@ -209,7 +209,11 @@ export function ReaderClient() {
         >
           <p className="text-muted-foreground text-sm">Opening your book…</p>
           {phase.progress !== null ? (
-            <Progress value={phase.progress * 100} className="w-56" />
+            <Progress
+              value={phase.progress * 100}
+              className="w-56"
+              aria-label="Opening your book"
+            />
           ) : null}
         </div>
       ) : null}
