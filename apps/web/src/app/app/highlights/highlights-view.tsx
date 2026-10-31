@@ -5,7 +5,7 @@ import { Input } from "@margin/ui/components/input";
 import { cn } from "@margin/ui/lib/utils";
 import { BookmarkIcon } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import type { HighlightEntry } from "@/lib/annotations/annotations-repo";
 import {
   booksOf,
@@ -73,6 +73,8 @@ export function HighlightsView() {
   const entries = useAllHighlights();
   const labels = useHighlightLabels();
   const [text, setText] = useState("");
+  // Filtering a large library runs per keystroke; deferring it keeps typing responsive.
+  const query = useDeferredValue(text);
   const [colors, setColors] = useState<ReadonlySet<HighlightColor>>(new Set());
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [includeBookmarks, setIncludeBookmarks] = useState(false);
@@ -84,24 +86,24 @@ export function HighlightsView() {
   const shown = useMemo(
     () =>
       filterHighlights(entries ?? [], {
-        text,
+        text: query,
         colors,
         documentId: bookFilter,
         includeBookmarks,
         sort,
       } satisfies HighlightQuery),
-    [entries, text, colors, bookFilter, includeBookmarks, sort],
+    [entries, query, colors, bookFilter, includeBookmarks, sort],
   );
   const counts = useMemo(
     () =>
       colorCounts(entries ?? [], {
-        text,
+        text: query,
         colors,
         documentId: bookFilter,
         includeBookmarks,
         sort,
       }),
-    [entries, text, colors, bookFilter, includeBookmarks, sort],
+    [entries, query, colors, bookFilter, includeBookmarks, sort],
   );
   const hasBookmarks = (entries ?? []).some((e) => e.kind === "bookmark");
 
