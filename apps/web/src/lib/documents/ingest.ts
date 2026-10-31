@@ -39,7 +39,7 @@ export async function extractMetadata(file: File): Promise<Extracted> {
       hasTextLayer = Boolean((await doc.pageText(1).catch(() => null))?.text.trim());
     }
     return {
-      title: chooseTitle(title, file.name, deriveTitle(firstPage)),
+      title: chooseTitle(title, file.name, safeDeriveTitle(firstPage)),
       author: author ?? null,
       pageCount: doc.pageCount,
       hasTextLayer,
@@ -60,4 +60,13 @@ async function renderCover(
   const canvas = document.createElement("canvas");
   await doc.renderPage(0, canvas, { scale: COVER_WIDTH_PX / widthPt, pixelRatio: 1 });
   return new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.8));
+}
+
+/** A title guess must never fail an upload. */
+function safeDeriveTitle(first: Parameters<typeof deriveTitle>[0]): string | undefined {
+  try {
+    return deriveTitle(first);
+  } catch {
+    return undefined;
+  }
 }
