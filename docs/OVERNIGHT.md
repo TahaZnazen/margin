@@ -57,3 +57,9 @@ Left for later (see `docs/PROGRESS.md`): Lighthouse and performance runs, pinch-
 - **"Mark chapter as done"**: no competitor has it. Full design in the report (§5.5): checks in the chapter list, "Done & next" at the end of a chapter, "4 of 12 chapters" in the library. It needs one new table, so ADR 0004 comes first.
 - The temporary `e2e-review-*` account and its 4 uploaded files were deleted; a database query shows none left. Your account and data were not touched. The test browser had a saved session (likely yours), so the walkthrough ran in a separate, clean browser window.
 - **Needs you:** pick what to build next. The report has ready-to-expand prompt stubs (Q1–Q5 quick wins, C1 chapters). C1 needs you to approve ADR 0004 (a new `chapter_progress` table) before any code.
+
+## Run 3: building the R01 top 10
+
+Started 2026-10-31 04:20. Each feature: a builder agent, a validator agent, a tester agent (full E2E suite + a hand check on desktop and phone), then merged and pushed (Vercel deploys `main`). The run resumes by itself after a usage reset (30-minute check while VS Code stays open).
+
+- ✅ **Search in book**: Ctrl+F (or the search icon) finds text in the whole book, "3 of 17", Enter / Shift+Enter, Esc. Accents ignored, Arabic works. Also in the command palette and the `?` sheet. Tests: 254 unit, E2E 89/90 (the 1 is the known phone scroll flake, passes alone).
