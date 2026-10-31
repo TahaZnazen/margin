@@ -69,6 +69,25 @@ const serverShelves = async () => {
   return data ?? [];
 };
 
+// The sync badge reads "synced" until an upload starts, so on its own it proves nothing right after a
+// write. Wait until this browser has no local change left to send (ps_crud is the upload queue).
+const uploaded = (page: Page) =>
+  expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { db } = (
+            window as unknown as {
+              __margin: { db: () => import("@powersync/web").PowerSyncDatabase };
+            }
+          ).__margin;
+          const rows = await db().getAll<{ n: number }>("SELECT COUNT(*) AS n FROM ps_crud");
+          return rows[0]?.n ?? 0;
+        }),
+      { timeout: 20_000 },
+    )
+    .toBe(0);
+
 async function syncErrors(page: Page): Promise<number> {
   return page.evaluate(async () => {
     const { db } = (
@@ -134,7 +153,7 @@ test("create, add books, filter, count, remember, rename", async ({ browser }) =
   await expect(chip(page, "Exam 3")).toBeVisible();
   await expect(chip(page, "Exam 2")).toHaveCount(0);
 
-  await synced(page);
+  await uploaded(page);
   await expect
     .poll(async () => (await serverShelves()).map((s) => s.name).sort(), { timeout: 15_000 })
     .toEqual(["Exam 3", "Pharmacology"]);
@@ -158,7 +177,7 @@ test("delete keeps the books; undo restores the shelf with its books", async ({ 
   await expect
     .poll(async () => (await titles(page).allTextContents()).sort())
     .toEqual(["Alpha Pharmacology", "Beta Physiology"]);
-  await synced(page);
+  await uploaded(page);
   await expect
     .poll(async () => (await serverLinks()).filter((l) => l.deleted_at === null).length, {
       timeout: 15_000,
@@ -177,9 +196,9 @@ test("remove and re-add the same book: one server row, no sync error", async ({ 
   for (let i = 0; i < 2; i++) {
     const dialog = await shelvesDialog(page, doc.title);
     await dialog.getByRole("checkbox", { name: "Pharmacology" }).uncheck();
-    await synced(page);
+    await uploaded(page);
     await dialog.getByRole("checkbox", { name: "Pharmacology" }).check();
-    await synced(page);
+    await uploaded(page);
     await page.keyboard.press("Escape");
   }
   const pair = async () =>
