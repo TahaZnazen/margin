@@ -8,6 +8,7 @@ import { ThemeSwitch } from "@margin/ui/components/theme-switch";
 import { ToggleGroup, ToggleGroupItem } from "@margin/ui/components/toggle-group";
 import { useTheme } from "@margin/ui/theme";
 import { useEffect, useRef, useState } from "react";
+import { flags } from "@/config/flags";
 import { services } from "@/lib/documents/services";
 import type { Settings } from "@/lib/settings/settings-repo";
 
@@ -103,20 +104,22 @@ export function SettingsForm() {
         </ToggleGroup>
       </fieldset>
 
-      <fieldset className="space-y-2">
-        <legend className="font-medium text-sm">Chapters</legend>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            data-testid="auto-mark-chapters"
-            className="size-4 accent-primary"
-            disabled={!settings}
-            checked={settings?.readerPrefs.autoMarkChapters === true}
-            onChange={(event) => void saveAutoMark(event.target.checked)}
-          />
-          Mark chapters done when I finish their last page
-        </label>
-      </fieldset>
+      {flags.chapterProgress ? (
+        <fieldset className="space-y-2">
+          <legend className="font-medium text-sm">Chapters</legend>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              data-testid="auto-mark-chapters"
+              className="size-4 accent-primary"
+              disabled={!settings}
+              checked={settings?.readerPrefs.autoMarkChapters === true}
+              onChange={(event) => void saveAutoMark(event.target.checked)}
+            />
+            Mark chapters done when I finish their last page
+          </label>
+        </fieldset>
+      ) : null}
 
       <form
         className="space-y-3"

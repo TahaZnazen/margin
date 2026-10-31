@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flags } from "@/config/flags";
 import {
   allDone,
   type ChapterSummary,
@@ -100,7 +101,9 @@ export function LibraryView() {
   const [sort, setSort] = useState<Sort>("recent");
   const [view, setView] = useState<View>("grid");
   const [statusFilter, setStatusFilter] = useState<ReadingStatus | "all">("all");
-  const summaries = useChapterSummaries();
+  const chapterSummaries = useChapterSummaries();
+  // Flag off: no chapter data reaches the cards, the sort or the status filter.
+  const summaries = flags.chapterProgress ? chapterSummaries : null;
   const [editing, setEditing] = useState<Book | null>(null);
   // Books whose PDF is stored on this device (opened once, or "Keep offline").
   const [offlineIds, setOfflineIds] = useState<Set<string>>(new Set());

@@ -51,6 +51,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { QuoteHost } from "@/components/notes/note-editor";
 import { SyncStatus } from "@/components/sync-status";
+import { flags } from "@/config/flags";
 import { buildChapterTree, onLastPageOf } from "@/lib/chapters/progress";
 import { useChapterProgress } from "@/lib/chapters/use-chapter-progress";
 import { palette, type ReaderCommands, useRegisterReaderCommands } from "@/lib/commands/store";
@@ -429,7 +430,7 @@ function ReaderHeader({
                 </span>
               ) : null}
             </p>
-            {onToggleChapterDone ? (
+            {flags.chapterProgress && onToggleChapterDone ? (
               <button
                 type="button"
                 aria-pressed={chapterDone === true}
@@ -831,7 +832,15 @@ function Reading({
   }, []);
   const autoTried = useRef(new Set<string>());
   useEffect(() => {
-    if (!autoMark || !marks.ready || !chapter || !atChapterEnd || pageTotal === 0) return;
+    if (
+      !flags.chapterProgress ||
+      !autoMark ||
+      !marks.ready ||
+      !chapter ||
+      !atChapterEnd ||
+      pageTotal === 0
+    )
+      return;
     if (autoTried.current.has(chapter.key)) return;
     // Finishing means staying on the last page for a moment, not flying past it.
     const key = chapter.key;
@@ -1087,6 +1096,7 @@ function Reading({
       )
         return;
       if (key === "d") {
+        if (!flags.chapterProgress) return;
         if (e.repeat || e.shiftKey) return;
         e.preventDefault();
         toggleChapterDone();
@@ -1366,7 +1376,7 @@ function Reading({
           ) : null}
           {upNext ? (
             <div className="absolute bottom-3 left-1/2 z-10 flex max-w-[calc(100%-9rem)] -translate-x-1/2 items-center gap-1">
-              {chapter && !chapterDone ? (
+              {flags.chapterProgress && chapter && !chapterDone ? (
                 <button
                   type="button"
                   data-testid="done-and-next"

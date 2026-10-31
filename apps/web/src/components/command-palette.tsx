@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { flags } from "@/config/flags";
 import type { HighlightEntry } from "@/lib/annotations/annotations-repo";
 import { filterHighlights } from "@/lib/annotations/highlights-list";
 import { useAllHighlights } from "@/lib/annotations/use-all-highlights";
@@ -227,7 +228,7 @@ export function CommandPalette() {
                       <CommandShortcut>Ctrl F</CommandShortcut>
                     </CommandItem>
                   )}
-                  {reader.hasChapter ? (
+                  {flags.chapterProgress && reader.hasChapter ? (
                     <CommandItem
                       value="mark chapter as done"
                       keywords={["finished", "complete", "check", "tick", "chapter done"]}
@@ -424,7 +425,9 @@ const SHORTCUTS: { group: string; rows: [string[], string][] }[] = [
       [["+", "-", "0"], "Zoom in / out / fit width"],
       [["T"], "Cycle theme"],
       [["[", "]"], "Previous / next chapter"],
-      [["D"], "Mark the current chapter as done (again: not done)"],
+      ...(flags.chapterProgress
+        ? ([[["D"], "Mark the current chapter as done (again: not done)"]] as [string[], string][])
+        : []),
       [["O"], "Toggle contents sidebar"],
       [["P"], "Toggle annotations panel"],
       [["F"], "Focus mode: only the page (Esc leaves)"],

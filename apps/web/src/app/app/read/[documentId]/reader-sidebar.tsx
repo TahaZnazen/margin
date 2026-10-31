@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@margin/ui/components/
 import { cn } from "@margin/ui/lib/utils";
 import { CheckIcon, ChevronRightIcon, LinkIcon, PencilIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flags } from "@/config/flags";
 import type { Annotation } from "@/lib/annotations/annotations-repo";
 import { type ChapterNode, chapterEndPage, chapterKey } from "@/lib/chapters/progress";
 import type { ChapterProgressApi } from "@/lib/chapters/use-chapter-progress";
@@ -360,7 +361,7 @@ function Chapters({
                   ) : (
                     <span className="size-7 shrink-0" aria-hidden />
                   )}
-                  {node ? (
+                  {!flags.chapterProgress ? null : node ? (
                     <button
                       type="button"
                       aria-pressed={done}
