@@ -3,8 +3,11 @@ import { publicEnv } from "@/env";
 import type { StorageProvider } from "@/lib/storage/storage-provider";
 import { createSupabaseStorage } from "@/lib/storage/supabase-storage";
 import { createClient } from "@/lib/supabase/client";
-import type { AnnotationsRepo } from "../annotations/annotations-repo";
-import { createPowerSyncAnnotationsRepo } from "../annotations/powersync-annotations-repo";
+import type { AllHighlightsRepo, AnnotationsRepo } from "../annotations/annotations-repo";
+import {
+  createPowerSyncAllHighlightsRepo,
+  createPowerSyncAnnotationsRepo,
+} from "../annotations/powersync-annotations-repo";
 import type { NotesRepo } from "../notes/notes-repo";
 import { createPowerSyncNotesRepo } from "../notes/powersync-notes-repo";
 import { createPowerSyncSettingsRepo } from "../settings/powersync-settings-repo";
@@ -19,6 +22,7 @@ export interface Services {
   documents: DocumentsRepo;
   readingState: ReadingStateRepo;
   annotations: AnnotationsRepo;
+  allHighlights: AllHighlightsRepo;
   notes: NotesRepo;
   settings: SettingsRepo;
   storage: StorageProvider;
@@ -36,6 +40,7 @@ export function services(): Services {
       documents: createPowerSyncDocumentsRepo(),
       readingState: createPowerSyncReadingStateRepo(),
       annotations: createPowerSyncAnnotationsRepo(),
+      allHighlights: createPowerSyncAllHighlightsRepo(),
       notes: createPowerSyncNotesRepo(),
       settings: createPowerSyncSettingsRepo(),
       storage: createSupabaseStorage(createClient(), publicEnv().NEXT_PUBLIC_SUPABASE_URL),

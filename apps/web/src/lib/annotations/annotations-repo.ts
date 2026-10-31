@@ -34,3 +34,20 @@ export interface AnnotationsRepo {
   /** Calls `onChange` when the document's annotations change here or on another device. */
   subscribe?(documentId: string, onChange: () => void): () => void;
 }
+
+/** An annotation together with the book it belongs to (N3: the all-highlights page). */
+export interface HighlightEntry extends Annotation {
+  bookTitle: string;
+  bookAuthor: string | null;
+}
+
+/** Cross-book reads over the local database. Works offline. */
+export interface AllHighlightsRepo {
+  /**
+   * Live highlights of every live book, plus bookmarks that carry a comment. Deleted rows and the
+   * rows of deleted books are left out. Unordered: the caller sorts.
+   */
+  listAll(): Promise<HighlightEntry[]>;
+  /** Calls `onChange` when any annotation or book changes here or on another device. */
+  subscribeAll(onChange: () => void): () => void;
+}

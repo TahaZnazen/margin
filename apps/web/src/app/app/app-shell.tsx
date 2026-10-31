@@ -15,6 +15,7 @@ import { useTheme } from "@margin/ui/theme";
 import {
   BookOpenIcon,
   DownloadIcon,
+  HighlighterIcon,
   LogOutIcon,
   NotebookPenIcon,
   SearchIcon,
@@ -35,6 +36,7 @@ import { UploadProvider } from "./upload-provider";
 
 const NAV = [
   { href: "/app", label: "Library", Icon: BookOpenIcon },
+  { href: "/app/highlights", label: "Highlights", Icon: HighlighterIcon },
   { href: "/app/notes", label: "Notes", Icon: NotebookPenIcon },
   { href: "/app/settings", label: "Settings", Icon: SettingsIcon },
 ] as const;

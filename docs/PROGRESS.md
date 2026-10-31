@@ -176,3 +176,11 @@ Each prompt in `prompts/` appends an entry here when it finishes, newest last. L
 **Deviations:** no spec stub existed in section 6, so the Back pill rules (15 s, 3 pages, Esc) are my reading of the brief. Link boxes carry no pointer events by design (hit-test in the viewer) so a link under an annotation popover or a highlight is intentionally inert. Tabbing through a dense page visits every link on the rendered pages (about 40 on page 1 of the arXiv paper).
 **Follow-ups:** footnote preview on hover and links in the annotation export (out of scope); a "skip links" affordance for very link-dense pages; internal links to a non-existent page index are clamped to the last page.
 **New dependencies:** none.
+
+## N3 — All highlights page · 2026-10-31 · branch n3-all-highlights
+**Built:** `/app/highlights` lists every highlight of every live book from local SQLite (works offline, live via `subscribeAll`). Search (quote, comment, book title; case and accent insensitive), color chips named "Key idea, 12" with counts, book select, sort newest or book order (title, then page), optional "Bookmarks with a comment" toggle, empty and no-match states, items clamp the quote, `content-visibility: auto`. Click opens `/app/read/<doc>#a=<id>` (flashes). "Highlights" in the left nav and the 4-item phone bar, "Go to Highlights" in the palette, and outside a book the palette searches all highlights (2+ characters, max 50, "Highlights" group).
+**Key files:** `apps/web/src/lib/annotations/{highlights-list.ts (+test),use-all-highlights.ts,annotations-repo.ts,powersync-annotations-repo.ts}`, `lib/documents/services.ts` (`allHighlights`), `app/app/highlights/*`, `app/app/app-shell.tsx`, `components/command-palette.tsx`, `e2e/all-highlights.spec.ts`.
+**Commands:** `pnpm e2e -- all-highlights`.
+**Deviations:** new separate `AllHighlightsRepo` interface (not added to `AnnotationsRepo`) so existing mocks and contracts are untouched. Chip counts follow the search, book and bookmark settings but not the color filter itself. Offline caching relies on the service worker's runtime navigation cache after one online visit (no extra warm-up entry).
+**Follow-ups:** tags filter (next feature); per-item actions (copy link, delete) are not on this page.
+**New dependencies:** none.

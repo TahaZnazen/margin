@@ -35,7 +35,10 @@ import {
   ZoomOutIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { HighlightEntry } from "@/lib/annotations/annotations-repo";
+import { filterHighlights } from "@/lib/annotations/highlights-list";
+import { useAllHighlights } from "@/lib/annotations/use-all-highlights";
 import { palette, usePalette } from "@/lib/commands/store";
 import type { Book } from "@/lib/documents/documents-repo";
 import { services } from "@/lib/documents/services";
@@ -83,6 +86,24 @@ function findTextFromQuery(query: string): string {
     .trim();
 }
 
+const GLOBAL_HIT_CAP = 50;
+
+/** Highlights of all books matching what is typed (2+ characters), newest first, capped. */
+function useGlobalHighlightHits(enabled: boolean, query: string): HighlightEntry[] {
+  const entries = useAllHighlights(enabled);
+  const text = query.trim();
+  return useMemo(() => {
+    if (!enabled || !entries || text.length < 2) return [];
+    return filterHighlights(entries, {
+      text,
+      colors: new Set(),
+      documentId: null,
+      includeBookmarks: true,
+      sort: "newest",
+    }).slice(0, GLOBAL_HIT_CAP);
+  }, [enabled, entries, text]);
+}
+
 export function CommandPalette() {
   useGlobalKeys();
   const { open, query, help, reader } = usePalette();
@@ -95,6 +116,8 @@ export function CommandPalette() {
   const openBookId = pathname.match(/^\/app\/read\/([^/]+)/)?.[1];
   const otherBooks = books.filter((b) => b.id !== openBookId);
   const [selected, setSelected] = useState("");
+  // Outside a book, typing searches the highlights of every book (capped).
+  const globalHits = useGlobalHighlightHits(open && !reader, query);
 
   useEffect(() => {
     if (!open) return;
@@ -236,6 +259,12 @@ export function CommandPalette() {
                   <BookOpenIcon /> Library
                 </CommandItem>
                 <CommandItem
+                  onSelect={() => run(() => router.push("/app/highlights"))}
+                  value="go to highlights all highlights"
+                >
+                  <HighlighterIcon /> Go to Highlights
+                </CommandItem>
+                <CommandItem
                   onSelect={() => run(() => router.push("/app/notes"))}
                   value="notes notebook"
                 >
@@ -288,6 +317,26 @@ export function CommandPalette() {
                       <HighlighterIcon />
                       <span className="truncate">{a.quote || a.comment || "Bookmark"}</span>
                       <CommandShortcut>p. {a.page + 1}</CommandShortcut>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ) : null}
+              {globalHits.length > 0 ? (
+                <CommandGroup heading="Highlights" data-testid="palette-highlights">
+                  {globalHits.map((a) => (
+                    <CommandItem
+                      key={a.id}
+                      // The list is already filtered (accent-insensitive, capped); the typed text in the
+                      // value makes cmdk's own fuzzy filter keep every hit.
+                      value={`${query.trim()} highlight ${a.id}`}
+                      data-testid="palette-highlight"
+                      onSelect={() => run(() => router.push(`/app/read/${a.documentId}#a=${a.id}`))}
+                    >
+                      <HighlighterIcon />
+                      <span className="truncate">{a.quoteText || a.comment || "Bookmark"}</span>
+                      <CommandShortcut className="max-w-40 truncate">
+                        {a.bookTitle} · p. {a.pageStart + 1}
+                      </CommandShortcut>
                     </CommandItem>
                   ))}
                 </CommandGroup>

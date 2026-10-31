@@ -1,6 +1,11 @@
 import { AnnotationTarget } from "@margin/annotation-model";
 import { syncedForRead, syncUserId, watchTables, writableDb } from "@margin/sync/client";
-import type { Annotation, AnnotationsRepo } from "./annotations-repo";
+import type {
+  AllHighlightsRepo,
+  Annotation,
+  AnnotationsRepo,
+  HighlightEntry,
+} from "./annotations-repo";
 
 type Row = {
   id: string;
@@ -93,5 +98,29 @@ export function createPowerSyncAnnotationsRepo(): AnnotationsRepo {
     },
 
     subscribe: (_documentId, onChange) => watchTables(["annotations"], onChange),
+  };
+}
+
+type EntryRow = Row & { book_title: string; book_author: string | null };
+
+/** `AllHighlightsRepo` over the local PowerSync database. */
+export function createPowerSyncAllHighlightsRepo(): AllHighlightsRepo {
+  return {
+    async listAll() {
+      const db = await syncedForRead();
+      const rows = await db.getAll<EntryRow>(
+        `SELECT a.id, a.document_id, a.kind, a.color, a.target, a.page_start, a.quote_text, a.comment,
+                a.anchor_status, a.created_at, a.updated_at, d.title AS book_title, d.author AS book_author
+         FROM annotations a JOIN documents d ON d.id = a.document_id
+         WHERE a.deleted_at IS NULL AND d.deleted_at IS NULL
+           AND (a.kind = 'highlight' OR (a.kind = 'bookmark' AND TRIM(COALESCE(a.comment, '')) <> ''))`,
+      );
+      return rows.flatMap((row): HighlightEntry[] => {
+        const a = toAnnotation(row);
+        return a ? [{ ...a, bookTitle: row.book_title, bookAuthor: row.book_author }] : [];
+      });
+    },
+
+    subscribeAll: (onChange) => watchTables(["annotations", "documents"], onChange),
   };
 }
