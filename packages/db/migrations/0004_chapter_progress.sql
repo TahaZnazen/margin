@@ -39,3 +39,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.chapter_progress TO authent
 
 -- Replicate to PowerSync clients.
 ALTER PUBLICATION powersync ADD TABLE public.chapter_progress;
+--> statement-breakpoint
+
+-- PowerSync reads with powersync_role (created by the one-off db:powersync-role script, not a migration).
+-- Grant it SELECT on the new published table when the role exists.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'powersync_role') THEN
+    GRANT SELECT ON TABLE public.chapter_progress TO powersync_role;
+  END IF;
+END $$;

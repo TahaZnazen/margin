@@ -129,4 +129,12 @@ describe("migration 0004 (ADR 0004) is additive", () => {
     expect(onDocuments[0]).toMatch(/ADD COLUMN "reading_status" text;?$/);
     expect(onDocuments[1]).toMatch(/ADD CONSTRAINT "documents_reading_status_check"/);
   });
+  it("grants powersync_role SELECT only through a guarded DO block", () => {
+    const blocks = statements.filter((s) => /^DO/i.test(s));
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatch(
+      /IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'powersync_role'\)/,
+    );
+    expect(blocks[0]).toMatch(/GRANT SELECT ON TABLE public\.chapter_progress TO powersync_role;/);
+  });
 });
