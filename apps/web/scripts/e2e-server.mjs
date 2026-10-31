@@ -9,8 +9,13 @@ const port = process.argv[2] ?? "3100";
 const appDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = ".next-e2e";
 const nextBin = createRequire(import.meta.url).resolve("next/dist/bin/next");
-// The E2E build turns on flagged features under test (src/config/flags.ts).
-const env = { ...process.env, NEXT_DIST_DIR: distDir, NEXT_PUBLIC_MARGIN_FLAGS: "chapterProgress" };
+// The E2E build turns on flagged features under test (src/config/flags.ts), unless the caller
+// sets NEXT_PUBLIC_MARGIN_FLAGS: an empty value builds the production configuration (flags off).
+const env = {
+  ...process.env,
+  NEXT_DIST_DIR: distDir,
+  NEXT_PUBLIC_MARGIN_FLAGS: process.env.NEXT_PUBLIC_MARGIN_FLAGS ?? "chapterProgress",
+};
 
 rmSync(`${appDir}${distDir}`, { recursive: true, force: true });
 
