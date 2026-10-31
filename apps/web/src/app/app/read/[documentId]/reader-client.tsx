@@ -34,6 +34,7 @@ import {
   BookmarkIcon,
   CoffeeIcon,
   DownloadIcon,
+  FocusIcon,
   MaximizeIcon,
   MinusIcon,
   MonitorIcon,
@@ -74,6 +75,8 @@ import { useImportExisting } from "./use-import";
 const SAVE_DEBOUNCE_MS = 1000;
 const ACTIVE_WINDOW_MS = 30_000;
 const SECONDS_FLUSH_EVERY = 15;
+/** In focus mode the header comes back for this long after a top-edge move or a tap. */
+const PEEK_MS = 2500;
 
 type Phase =
   | { kind: "loading"; progress: number | null }
@@ -510,6 +513,36 @@ function Reading({
     setFindOpen(true);
     setFindSeed((s) => ({ text, nonce: s.nonce + 1 }));
   }, []);
+  // Focus mode: only the page. Header, contents and panel are hidden; the header peeks back for
+  // PEEK_MS when the pointer reaches the top edge or on a tap. Not persisted.
+  const [focus, setFocus] = useState(false);
+  const [peek, setPeek] = useState(false);
+  const fullscreenHeld = useRef(false);
+  const enterFocus = useCallback(() => {
+    setFocus(true);
+    setPeek(false);
+    try {
+      // May be missing (iOS Safari) or rejected (iframe, automation): the chrome hides regardless.
+      const request = document.documentElement.requestFullscreen?.();
+      if (request) void request.catch(() => {});
+    } catch {
+      // Fullscreen is a nicety, never a requirement.
+    }
+  }, []);
+  const leaveFocus = useCallback(() => {
+    setFocus(false);
+    setPeek(false);
+    fullscreenHeld.current = false;
+    try {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    } catch {
+      // Already out of fullscreen.
+    }
+  }, []);
+  const toggleFocus = useCallback(
+    () => (focus ? leaveFocus() : enterFocus()),
+    [focus, enterFocus, leaveFocus],
+  );
   const notebook = useNotebook(documentId);
   const position = useRef<ReaderPosition | null>(null);
   const pageCount = useRef(0);
@@ -572,6 +605,23 @@ function Reading({
       flush();
     };
   }, [flush, schedule]);
+
+  // Esc: note what was open BEFORE the annotation layer (registered next) and Radix react to the
+  // key, so focus mode only leaves when nothing nearer was there to close.
+  const popoverShown = useRef(false);
+  const escapeHadTarget = useRef(false);
+  useEffect(() => {
+    const snapshot = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      escapeHadTarget.current =
+        popoverShown.current ||
+        !!document.querySelector(
+          '[role="dialog"]:not([data-state="closed"]), [role="menu"]:not([data-state="closed"])',
+        );
+    };
+    window.addEventListener("keydown", snapshot, true);
+    return () => window.removeEventListener("keydown", snapshot, true);
+  }, []);
 
   const unsynced = useUnsyncedWrites();
   const layer = useAnnotationLayer({
@@ -707,6 +757,71 @@ function Reading({
     };
   }, [compactChrome]);
 
+  // Browser-level exit from fullscreen (its own Esc, F11) also leaves focus mode.
+  useEffect(() => {
+    const onChange = () => {
+      if (document.fullscreenElement) fullscreenHeld.current = true;
+      else if (fullscreenHeld.current) {
+        fullscreenHeld.current = false;
+        setFocus(false);
+        setPeek(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      try {
+        if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+      } catch {
+        // Nothing to leave.
+      }
+    };
+  }, []);
+
+  // Focus mode: the top edge (mouse) or a tap (touch, pen) shows the header for PEEK_MS.
+  useEffect(() => {
+    if (!focus) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = setTimeout(function expire() {
+        const header = document.querySelector('[data-testid="reader-header"]');
+        const busy =
+          header?.contains(document.activeElement) ||
+          document.querySelector('[role="menu"], [data-radix-popper-content-wrapper]');
+        if (busy) timer = setTimeout(expire, PEEK_MS);
+        else setPeek(false);
+      }, PEEK_MS);
+    };
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") return;
+      if (event.clientY <= 6) {
+        setPeek(true);
+        arm();
+      } else if (event.clientY <= 56) {
+        // Still near the bar: keep it while it is showing.
+        setPeek((shown) => {
+          if (shown) arm();
+          return shown;
+        });
+      }
+    };
+    const onTap = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") return;
+      if (window.getSelection()?.toString()) return;
+      setPeek(true);
+      arm();
+    };
+    window.addEventListener("pointermove", onMove);
+    const el = wrapper.current;
+    el?.addEventListener("pointerup", onTap);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointermove", onMove);
+      el?.removeEventListener("pointerup", onTap);
+    };
+  }, [focus]);
+
   const zoomActions = useMemo(
     () => ({
       zoomIn: () => viewer.current?.zoomIn(),
@@ -773,6 +888,7 @@ function Reading({
       jumpToAnnotation: (id) => host.jump(id),
       toggleSidebar: () => setSidebarOpen(!sidebarOpen),
       togglePanel: () => setPanelOpen((o) => !o),
+      toggleFocus,
       openFind,
       ...zoomActions,
     }),
@@ -785,6 +901,7 @@ function Reading({
       host,
       setSidebarOpen,
       sidebarOpen,
+      toggleFocus,
       openFind,
       zoomActions,
     ],
@@ -809,6 +926,32 @@ function Reading({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [sidebarOpen, setSidebarOpen]);
+
+  // "F" toggles focus mode. Esc leaves it, but only when nothing nearer needs the key: a text field,
+  // an open menu or dialog, the annotation popover (the annotation layer clears it), the find bar.
+  popoverShown.current = layer.popover !== null;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+      )
+        return;
+      if (e.key === "f" || e.key === "F") {
+        if (e.repeat) return;
+        e.preventDefault();
+        toggleFocus();
+      } else if (e.key === "Escape" && focus) {
+        if (escapeHadTarget.current) return;
+        if (findOpen) setFindOpen(false);
+        else leaveFocus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focus, findOpen, toggleFocus, leaveFocus]);
 
   const sidebar = (
     <ReaderSidebar
@@ -864,6 +1007,18 @@ function Reading({
         onClick={() => openFind()}
       >
         <SearchIcon />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 sm:size-9"
+        aria-label="Focus mode"
+        title="Focus mode (F)"
+        aria-pressed={focus}
+        data-testid="focus-toggle"
+        onClick={toggleFocus}
+      >
+        <FocusIcon />
       </Button>
       <ZoomControls percent={state?.percent ?? 100} {...zoomActions} />
       <DropdownMenu>
@@ -948,15 +1103,15 @@ function Reading({
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         actions={actions}
-        hidden={barHidden}
-        overlay={compactChrome}
+        hidden={focus ? !peek : barHidden}
+        overlay={compactChrome || focus}
       />
       <div className="relative flex min-h-0 flex-1">
         {!narrow && sidebarOpen ? (
           <aside
             aria-label="Contents"
             data-testid="reader-rail"
-            className="flex w-72 shrink-0 flex-col border-r bg-background"
+            className={cn("flex w-72 shrink-0 flex-col border-r bg-background", focus && "hidden")}
           >
             {sidebar}
           </aside>
@@ -999,7 +1154,7 @@ function Reading({
               onClose={() => setFindOpen(false)}
               className={cn(
                 "absolute z-20 transition-[top] duration-(--duration-chrome) max-sm:inset-x-2 sm:top-3 sm:right-4",
-                compactChrome && !barHidden ? "top-14" : "top-2",
+                (focus ? peek : compactChrome && !barHidden) ? "top-14" : "top-2",
               )}
             />
           ) : null}
@@ -1036,13 +1191,16 @@ function Reading({
           <aside
             aria-label="Annotations and notebook"
             data-testid="right-panel"
-            className="flex w-[22rem] shrink-0 flex-col border-l bg-background"
+            className={cn(
+              "flex w-[22rem] shrink-0 flex-col border-l bg-background",
+              focus && "hidden",
+            )}
           >
             {panel}
           </aside>
         ) : null}
         {narrow ? (
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <Sheet open={sheetOpen && !focus} onOpenChange={setSheetOpen}>
             <SheetContent
               side="left"
               data-testid="reader-sheet"
@@ -1056,7 +1214,7 @@ function Reading({
           </Sheet>
         ) : null}
         {narrow ? (
-          <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
+          <Sheet open={panelOpen && !focus} onOpenChange={setPanelOpen}>
             <SheetContent
               side="bottom"
               data-testid="right-panel"

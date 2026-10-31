@@ -153,3 +153,11 @@ Each prompt in `prompts/` appends an entry here when it finishes, newest last. L
 **Commands:** `ALLOW_SIGNUPS=false pnpm e2e -- e2e/titles-bookmarks.spec.ts` (3 tests; screenshots in `evidence/q3-titles-bookmarks/`).
 **Deviations from the prompt or docs:** Existing assertions updated to the new behavior: `export.test.ts` (bookmark line is now name first) and `a11y.spec.ts` (settings field label "key" is now "Key idea"). The fallback applies only at upload; existing books keep their titles.
 **Follow-ups:** Bookmark name length is capped at 80 characters in the UI only (the model allows more). Scanned books have no text, so they keep the file name until OCR (WP-24).
+
+## Q4 — Focus mode · 2026-10-31 · branch q4-focus-mode
+**Built:** `F`, a header button (Focus icon) and a palette entry "Focus mode" toggle focus mode: header, contents sidebar and right panel are hidden (kept mounted, so no state is lost) and the page gets the room. Fullscreen API is requested but optional: missing or rejected, the chrome still hides and nothing throws. The header floats over the page and peeks back for 2.5 s when the mouse reaches the top edge (it stays while the pointer is near it, focus is in it or a menu is open) or on a tap on touch devices. Leaving fullscreen from the browser (its own Esc, F11) also leaves focus mode. Not persisted. `?` sheet line added.
+**Esc order, innermost first:** a text field (find box, comment, notebook) or an open dialog/menu or the annotation popover handles its own Esc; then an open find bar closes; then focus mode leaves. `F` is ignored while typing and with Ctrl/Cmd/Alt.
+**Key files:** `apps/web/src/app/app/read/[documentId]/reader-client.tsx`, `apps/web/src/lib/commands/store.ts` (`toggleFocus`), `apps/web/src/components/command-palette.tsx`, `apps/web/e2e/focus-mode.spec.ts`.
+**Commands:** `pnpm e2e -- focus-mode.spec.ts`. Evidence: `evidence/q4-focus-mode/`.
+**Deviations from the prompt or docs:** the desktop idle fade of the top bar (build item 3) is not built; the peek mechanism is separate from the phone scroll-hide because focus mode needs a timed peek rather than scroll direction. The phone header now has one more icon, so the book title is squeezed further (it was already narrow).
+**Follow-ups:** phone header is crowded (consider moving Export/Focus into a menu); desktop idle fade could reuse `peek`.

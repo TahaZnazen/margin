@@ -20,6 +20,7 @@ import { Kbd } from "@margin/ui/components/kbd";
 import { useTheme } from "@margin/ui/theme";
 import {
   BookOpenIcon,
+  FocusIcon,
   HashIcon,
   HighlighterIcon,
   KeyboardIcon,
@@ -209,6 +210,13 @@ export function CommandPalette() {
                   >
                     <PanelRightIcon /> Toggle annotations panel <CommandShortcut>P</CommandShortcut>
                   </CommandItem>
+                  <CommandItem
+                    onSelect={() => run(reader.toggleFocus)}
+                    value="focus mode"
+                    keywords={["full screen", "fullscreen", "distraction free", "reading mode"]}
+                  >
+                    <FocusIcon /> Focus mode <CommandShortcut>F</CommandShortcut>
+                  </CommandItem>
                   <CommandItem onSelect={() => run(reader.zoomIn)} value="zoom in">
                     <ZoomInIcon /> Zoom in <CommandShortcut>+</CommandShortcut>
                   </CommandItem>
@@ -331,6 +339,7 @@ const SHORTCUTS: { group: string; rows: [string[], string][] }[] = [
       [["[", "]"], "Previous / next chapter"],
       [["O"], "Toggle contents sidebar"],
       [["P"], "Toggle annotations panel"],
+      [["F"], "Focus mode: only the page (Esc leaves)"],
       [["B"], "Bookmark this page"],
     ],
   },
