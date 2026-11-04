@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Margin",
-    short_name: "Margin",
+    name: "Anagnosis",
+    short_name: "Anagnosis",
     description: "Read it once. Remember it.",
     id: "/app",
     start_url: "/app",

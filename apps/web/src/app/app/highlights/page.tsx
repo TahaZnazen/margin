@@ -1,6 +1,6 @@
 import { HighlightsView } from "./highlights-view";
 
-export const metadata = { title: "Highlights · Margin" };
+export const metadata = { title: "Highlights · Anagnosis" };
 
 export default function HighlightsPage() {
   return (

@@ -254,7 +254,7 @@ test.describe("reader core", () => {
     await page.waitForTimeout(500);
     expect(dialogs).toEqual([]);
     expect(errors).toEqual([]);
-    expect(await page.title()).toBe("Margin · Reader");
+    expect(await page.title()).toBe("Anagnosis · Reader");
   });
 
   test("opens a PDF from the user's computer in memory (no upload)", async ({ page }) => {

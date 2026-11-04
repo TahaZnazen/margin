@@ -129,7 +129,7 @@ export async function exportBookPdf(documentId: string, bytes?: ArrayBuffer | Ui
       updatedAt: a.updatedAt,
       segments: a.target.segments.map((seg) => ({ page: seg.page, rects: seg.rects })),
     })),
-    "Margin",
+    "Anagnosis",
     book.annotationsImportedAt !== null,
   );
   saveBlob(`${fileStem(book.title)}-annotated.pdf`, out as BlobPart, "application/pdf");

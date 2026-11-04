@@ -1,6 +1,6 @@
 import { NotesView } from "./notes-view";
 
-export const metadata = { title: "Notes · Margin" };
+export const metadata = { title: "Notes · Anagnosis" };
 
 export default function NotesPage() {
   return (

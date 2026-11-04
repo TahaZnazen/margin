@@ -58,7 +58,7 @@ function annotationBlock(
   const lines = [
     quoteLines(a.quoteText ?? ""),
     ">",
-    `> **${label}** · p. ${a.pageStart + 1} · [Open in Margin](${deepLink(input.origin, input.documentId, a.id)})`,
+    `> **${label}** · p. ${a.pageStart + 1} · [Open in Anagnosis](${deepLink(input.origin, input.documentId, a.id)})`,
   ];
   if (a.comment) lines.push("", ...a.comment.split("\n").map((l) => plain(l)));
   const tags = tagWords(a.tags ?? []);
@@ -146,7 +146,7 @@ function block(node: JsonNode, ctx: NotebookContext): string | null {
       const text = String(live?.quoteText ?? node.attrs?.quoteSnapshot ?? "");
       const page = (live?.pageStart ?? Number(node.attrs?.page ?? 0)) + 1;
       const tail = live
-        ? `p. ${page} · [Open in Margin](${deepLink(ctx.origin, ctx.documentId, id)})`
+        ? `p. ${page} · [Open in Anagnosis](${deepLink(ctx.origin, ctx.documentId, id)})`
         : `p. ${page} · highlight deleted`;
       return `${quoteLines(text)}\n>\n> ${tail}`;
     }
@@ -199,7 +199,7 @@ export function bookToMarkdown(input: BookMarkdownInput): string {
     out.push("## Bookmarks", "");
     for (const b of [...bookmarks].sort((x, y) => x.pageStart - y.pageStart)) {
       const name = b.comment ? plain(b.comment.replace(/\s+/g, " ").trim()) : "";
-      const link = `[Open in Margin](${deepLink(input.origin, input.documentId, b.id)})`;
+      const link = `[Open in Anagnosis](${deepLink(input.origin, input.documentId, b.id)})`;
       out.push(
         name
           ? `- **${name}** · p. ${b.pageStart + 1} · ${link}`

@@ -170,7 +170,7 @@ function stripImportable(page: PDFPage) {
 export async function exportAnnotatedPdf(
   bytes: ArrayBuffer | Uint8Array,
   annotations: readonly ExportableAnnotation[],
-  author = "Margin",
+  author = "Anagnosis",
   replaceExisting = false,
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.load(bytes, {

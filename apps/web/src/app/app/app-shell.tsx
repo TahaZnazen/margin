@@ -104,7 +104,7 @@ export function AppShell({
             aria-label="Main"
             className="hidden w-52 shrink-0 flex-col gap-1 border-r bg-card p-3 md:flex"
           >
-            <p className="px-2 pt-1 pb-4 font-semibold font-serif text-xl">Margin</p>
+            <p className="px-2 pt-1 pb-4 font-semibold font-serif text-xl">Anagnosis</p>
             {NAV.map(({ href, label, Icon }) => (
               <Link
                 key={href}
@@ -123,7 +123,7 @@ export function AppShell({
 
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="flex h-12 shrink-0 items-center justify-between border-b px-4">
-              <p className="font-semibold font-serif text-lg md:invisible">Margin</p>
+              <p className="font-semibold font-serif text-lg md:invisible">Anagnosis</p>
               <div className="flex items-center gap-1">
                 <SyncStatus />
                 <Button

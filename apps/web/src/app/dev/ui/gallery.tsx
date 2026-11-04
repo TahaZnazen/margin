@@ -282,7 +282,7 @@ export function Gallery() {
   return (
     <main className="mx-auto flex max-w-[1500px] flex-col gap-6 p-6">
       <header className="flex items-center justify-between">
-        <h1 className="font-serif text-display">Margin UI</h1>
+        <h1 className="font-serif text-display">Anagnosis UI</h1>
         <ThemeSwitch />
       </header>
       <div className="grid gap-6 lg:grid-cols-3">

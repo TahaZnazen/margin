@@ -38,7 +38,7 @@ test("manifest, icons and service worker registration", async ({ page, request }
     display: string;
     icons: { src: string; sizes: string; purpose?: string }[];
   };
-  expect(manifest.name).toBe("Margin");
+  expect(manifest.name).toBe("Anagnosis");
   expect(manifest.start_url).toBe("/app");
   expect(manifest.display).toBe("standalone");
   expect(manifest.icons.some((i) => i.sizes === "192x192")).toBe(true);

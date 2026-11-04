@@ -7,11 +7,11 @@ import { fontVariables } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Margin",
+  title: "Anagnosis",
   description: "Read it once. Remember it.",
-  applicationName: "Margin",
+  applicationName: "Anagnosis",
   icons: { icon: "/icons/icon.svg", apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Margin", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Anagnosis", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

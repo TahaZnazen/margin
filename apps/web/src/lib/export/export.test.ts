@@ -84,7 +84,7 @@ describe("Markdown export", () => {
   it("groups highlights by chapter with label, page, comment and a deep link", () => {
     expect(md.indexOf("### Intro")).toBeLessThan(md.indexOf("### Part Two"));
     expect(md).toContain(
-      `**Key idea** · p. 3 · [Open in Margin](https://margin.test/app/read/${DOC}#a=${ID1})`,
+      `**Key idea** · p. 3 · [Open in Anagnosis](https://margin.test/app/read/${DOC}#a=${ID1})`,
     );
     expect(md).toContain("My thought");
     expect(md).toContain("**Memorize** · p. 41");
@@ -102,14 +102,14 @@ describe("Markdown export", () => {
     expect(md).toContain("**bold** and [link](https://e.org)");
     expect(md).toContain("- [x] done");
     expect(md).toContain(
-      `> First line\n> second \\<b>line\\</b>\n>\n> p. 3 · [Open in Margin](https://margin.test/app/read/${DOC}#a=${ID1})`,
+      `> First line\n> second \\<b>line\\</b>\n>\n> p. 3 · [Open in Anagnosis](https://margin.test/app/read/${DOC}#a=${ID1})`,
     );
     expect(md).toContain("> Deleted text\n>\n> p. 10 · highlight deleted");
   });
 
   it("lists a named bookmark by its name, with its page and link", () => {
     expect(md).toContain(
-      "- **Check this** · p. 6 · [Open in Margin](https://margin.test/app/read/" + DOC + "#a=b)",
+      "- **Check this** · p. 6 · [Open in Anagnosis](https://margin.test/app/read/" + DOC + "#a=b)",
     );
   });
   it("lists an unnamed bookmark by page only", () => {
@@ -125,7 +125,7 @@ describe("Markdown export", () => {
       ],
       notebook: null,
     });
-    expect(plain).toContain("- p. 3 · [Open in Margin](");
+    expect(plain).toContain("- p. 3 · [Open in Anagnosis](");
   });
   it("never emits raw HTML", () => {
     expect(md).not.toMatch(/(^|[^\\])<[a-z/]/i);

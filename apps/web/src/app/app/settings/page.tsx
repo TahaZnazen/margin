@@ -2,7 +2,7 @@ import { DataExport } from "./data-export";
 import { SettingsForm } from "./settings-form";
 import { InstallSection, StorageSection } from "./storage-section";
 
-export const metadata = { title: "Settings · Margin" };
+export const metadata = { title: "Settings · Anagnosis" };
 
 export default function SettingsPage() {
   return (

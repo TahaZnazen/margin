@@ -26,7 +26,7 @@ function svg() {
     ([x, y, w, h, r, c]) =>
       `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="rgb(${c.join(",")})"/>`,
   ).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>Margin</title><rect width="100" height="100" rx="22" fill="rgb(${BG.join(",")})"/>${rects}</svg>\n`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>Anagnosis</title><rect width="100" height="100" rx="22" fill="rgb(${BG.join(",")})"/>${rects}</svg>\n`;
 }
 
 function inRoundRect(px, py, [x, y, w, h, r]) {

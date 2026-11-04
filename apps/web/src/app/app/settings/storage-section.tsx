@@ -110,7 +110,7 @@ export function InstallSection() {
         Install
       </h2>
       <p className="text-muted-foreground text-sm">
-        Install Margin as an app for its own window and offline use.
+        Install Anagnosis as an app for its own window and offline use.
       </p>
       {canInstall ? (
         <Button onClick={() => void install()} data-testid="install-app">
